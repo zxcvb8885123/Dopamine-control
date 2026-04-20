@@ -64,9 +64,14 @@ function reportUsage(seconds) {
 
   if (typeof chrome === "undefined" || !chrome.runtime?.sendMessage) return;
 
-  chrome.runtime.sendMessage({ type: "CHECK_LIMIT", domain, seconds }, () => {
+  chrome.runtime.sendMessage({ type: "REPORT_USAGE", domain, seconds }, () => {
     if (chrome.runtime.lastError) {
       // Ignore if background receiver is not ready; local storage already persisted.
+    }
+  });
+  chrome.runtime.sendMessage({ type: "CHECK_LIMIT", domain, seconds }, () => {
+    if (chrome.runtime.lastError) {
+      // Keep backward compatibility during integration.
     }
   });
 }
@@ -129,3 +134,13 @@ export function stopTimer() {
   flushRemainingUsage();
   window.removeEventListener("pagehide", onPageHide);
 }
+
+function registerGlobalTimerAPI() {
+  if (typeof window === "undefined") return;
+
+  window.__ddTimer = window.__ddTimer || {};
+  window.__ddTimer.run = (settings = {}) => startTimer(settings);
+  window.__ddTimer.stop = () => stopTimer();
+}
+
+registerGlobalTimerAPI();

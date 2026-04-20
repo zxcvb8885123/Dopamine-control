@@ -1,4 +1,4 @@
-import { getTodayUsage } from "../modules/usage-analytics/summary.js";
+import { getLastNDaysUsage } from "../modules/usage-analytics/summary.js";
 
 function formatToMinutes(seconds) {
   const mins = Math.max(0, Math.round((Number(seconds) || 0) / 60));
@@ -52,12 +52,16 @@ function renderDomainList(domains) {
 
 async function initReport() {
   const dateEl = document.getElementById("today-date");
+  const totalEl = document.getElementById("week-total");
+  const avgEl = document.getElementById("week-avg");
 
   try {
-    const today = await getTodayUsage();
-    dateEl.textContent = today.date;
+    const weekly = await getLastNDaysUsage(7);
+    dateEl.textContent = "Last 7 Days";
+    totalEl.textContent = `Total: ${formatToMinutes(weekly.totalSeconds)}`;
+    avgEl.textContent = `Avg/day: ${formatToMinutes(weekly.avgSecondsPerDay)}`;
 
-    const domains = [...(today.domains || [])].sort((a, b) => b.seconds - a.seconds);
+    const domains = [...(weekly.topDomains || [])].sort((a, b) => b.seconds - a.seconds);
     if (!domains.length) {
       renderEmptyState();
       return;
@@ -67,6 +71,8 @@ async function initReport() {
     renderDomainList(domains);
   } catch (error) {
     dateEl.textContent = "Load failed";
+    totalEl.textContent = "Total: --";
+    avgEl.textContent = "Avg/day: --";
     renderEmptyState();
   }
 }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Usage Report</title>
+  <title>Addiction Report</title>
   <style>
     :root {
       color-scheme: light;
@@ -42,6 +42,22 @@
       margin: 0 0 12px;
       color: var(--muted);
       font-size: 13px;
+    }
+
+    .metrics {
+      display: flex;
+      gap: 8px;
+      margin: 0 0 10px;
+    }
+
+    .metric {
+      flex: 1;
+      background: #f8faff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      font-size: 12px;
+      color: var(--muted);
     }
 
     .top-domain {
@@ -95,11 +111,15 @@
 </head>
 <body>
   <main class="card">
-    <h1>Today Usage</h1>
+    <h1>Addiction Report</h1>
     <p class="sub" id="today-date">Loading...</p>
+    <div class="metrics">
+      <p class="metric" id="week-total">Total: --</p>
+      <p class="metric" id="week-avg">Avg/day: --</p>
+    </div>
     <p class="top-domain" id="top-domain">Top 1: --</p>
     <ul id="usage-list"></ul>
-    <p class="empty" id="empty-tip" hidden>No usage data for today.</p>
+    <p class="empty" id="empty-tip" hidden>No usage data for last 7 days.</p>
   </main>
 
   <script type="module" src="./report.js"></script>
