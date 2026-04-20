@@ -2,9 +2,8 @@
 
 Chrome Extension（Manifest V3）專案，目標是協助使用者降低高刺激平台造成的注意力流失。
 
-## 我負責的部分（模組三：Usage Tracking）
+## 模組三：行為追蹤與數據化（Usage Tracking）  
 
-模組三：行為追蹤與數據化（Usage Tracking）  
 狀態：已完成（待整體串接驗收）
 
 ## 模組三已完成重點
