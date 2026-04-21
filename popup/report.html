@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Addiction Report</title>
+  <title>Report</title>
   <style>
     :root {
       color-scheme: light;
@@ -13,6 +13,8 @@
       --muted: #677086;
       --line: #e4e8f0;
       --accent: #2f6df6;
+      --btn-bg: #eef3ff;
+      --btn-text: #3555a5;
     }
 
     body {
@@ -42,6 +44,31 @@
       margin: 0 0 12px;
       color: var(--muted);
       font-size: 13px;
+    }
+
+    .range-buttons {
+      display: flex;
+      gap: 8px;
+      margin: 0 0 12px;
+    }
+
+    .range-btn {
+      flex: 1;
+      border: 1px solid #d8e2ff;
+      border-radius: 8px;
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      font-size: 12px;
+      padding: 8px 0;
+      cursor: pointer;
+      transition: all 120ms ease-in;
+    }
+
+    .range-btn.is-active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+      font-weight: 600;
     }
 
     .metrics {
@@ -111,15 +138,23 @@
 </head>
 <body>
   <main class="card">
-    <h1>Addiction Report</h1>
-    <p class="sub" id="today-date">Loading...</p>
-    <div class="metrics">
-      <p class="metric" id="week-total">Total: --</p>
-      <p class="metric" id="week-avg">Avg/day: --</p>
+    <h1 id="report-title">Report</h1>
+    <p class="sub" id="report-range">Loading...</p>
+
+    <div class="range-buttons" role="group" aria-label="Report range" id="range-group">
+      <button type="button" class="range-btn is-active" data-range="daily" aria-pressed="true">Daily</button>
+      <button type="button" class="range-btn" data-range="weekly" aria-pressed="false">Weekly</button>
+      <button type="button" class="range-btn" data-range="monthly" aria-pressed="false">Monthly</button>
     </div>
+
+    <div class="metrics">
+      <p class="metric" id="period-total">Total: --</p>
+      <p class="metric" id="period-avg">Avg/day: --</p>
+    </div>
+
     <p class="top-domain" id="top-domain">Top 1: --</p>
     <ul id="usage-list"></ul>
-    <p class="empty" id="empty-tip" hidden>No usage data for last 7 days.</p>
+    <p class="empty" id="empty-tip" hidden>No usage data for this period.</p>
   </main>
 
   <script type="module" src="./report.js"></script>

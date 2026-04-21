@@ -1,9 +1,11 @@
 import { recordUsageChunk } from "./storage.js";
 
 const TIMER_ID = "dd-timer";
-const DEFAULT_REPORT_INTERVAL_SECONDS = 30;
+const REPORT_ENTRY_ID = "dd-report-entry";
+const DEFAULT_REPORT_INTERVAL_SECONDS = 5;
 
 let timerEl = null;
+let reportEntryEl = null;
 let intervalId = null;
 let elapsedSeconds = 0;
 let pendingReportSeconds = 0;
@@ -50,8 +52,46 @@ function ensureTimerElement() {
   return timerEl;
 }
 
+function openReportPage() {
+  if (typeof chrome === "undefined" || !chrome.runtime?.getURL) return;
+  const reportUrl = chrome.runtime.getURL("popup/report.html");
+  window.open(reportUrl, "_blank");
+}
+
+function ensureReportEntryElement() {
+  if (reportEntryEl && document.body.contains(reportEntryEl)) return reportEntryEl;
+
+  reportEntryEl = document.getElementById(REPORT_ENTRY_ID);
+  if (reportEntryEl) return reportEntryEl;
+
+  reportEntryEl = document.createElement("button");
+  reportEntryEl.id = REPORT_ENTRY_ID;
+  reportEntryEl.type = "button";
+  reportEntryEl.textContent = "\u5831\u8868";
+  reportEntryEl.style.cssText = [
+    "position: fixed",
+    "bottom: 16px",
+    "right: 140px",
+    "background: #2f6df6",
+    "color: #fff",
+    "font-size: 11px",
+    "padding: 6px 10px",
+    "border: none",
+    "border-radius: 12px",
+    "z-index: 99999",
+    "font-family: sans-serif",
+    "cursor: pointer",
+    "pointer-events: auto",
+  ].join(";");
+  reportEntryEl.addEventListener("click", openReportPage);
+  document.body.appendChild(reportEntryEl);
+
+  return reportEntryEl;
+}
+
 function updateTimerText() {
   const el = ensureTimerElement();
+  ensureReportEntryElement();
   const domain = normalizeDomain(location.hostname);
   el.textContent = `${domain}  ${formatDuration(elapsedSeconds)}`;
 }
@@ -133,6 +173,11 @@ export function stopTimer() {
   timerEnabled = false;
   flushRemainingUsage();
   window.removeEventListener("pagehide", onPageHide);
+  if (reportEntryEl) {
+    reportEntryEl.removeEventListener("click", openReportPage);
+    reportEntryEl.remove();
+    reportEntryEl = null;
+  }
 }
 
 function registerGlobalTimerAPI() {
