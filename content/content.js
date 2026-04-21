@@ -1,81 +1,25 @@
-/**
- * content/content.js — Content Script 主入口
- *
- * 目前負責：
- *   1. 強制冷卻（cooldown.js）
- *   2. 每日限時使用量回報（每 30 秒送一次 REPORT_USAGE 給 background）
- *
- * 其他模組（declutter、timer）將由其他人補充。
- */
-
-(function () {
+(async () => {
   'use strict';
+  try {
+    const engineUrl = chrome.runtime.getURL('modules/engine.js');
+    const { runDecluttering } = await import(engineUrl);
 
-  function isContextValid() {
-    try {
-      return !!chrome.runtime?.id;
-    } catch {
-      return false;
-    }
-  }
+    // 1. 啟動時檢查儲存的狀態
+    const data = await chrome.storage.local.get('enabled');
+    const isEnabled = data.enabled !== false; // 預設為開啟
+    
+    runDecluttering({ enabled: isEnabled });
+    console.log(`%c[DopamineControl] 引擎啟動狀態: ${isEnabled}`, 'color: #2ecc71; font-weight: bold;');
 
-  if (!isContextValid()) return;
-
-  chrome.runtime.sendMessage({ type: 'GET_SETTINGS' }, (settings) => {
-    if (chrome.runtime.lastError || !settings) return;
-    if (!settings.enabled) return;
-
-    // 1. 強制冷卻
-    if (window.__ddCooldown) {
-      window.__ddCooldown.run(settings);
-    }
-
-    // 2. 每日限時 usage tracking
-    startUsageTracking(settings);
-
-    // TODO: 其他模組在此呼叫
-    // if (window.__ddDeclutter) window.__ddDeclutter.run(settings);
-    // if (window.__ddTimer)     window.__ddTimer.run(settings);
-  });
-
-  // ── 每日限時使用量回報 ───────────────────────────────────────
-
-  function startUsageTracking(settings) {
-    const { dailyLimits = {} } = settings;
-
-    const hostname = location.hostname.replace(/^www\./, '');
-
-    const matchedDomain = Object.keys(dailyLimits).find(
-      d => hostname === d || hostname.endsWith('.' + d)
-    );
-
-    if (!matchedDomain) return;
-
-    const INTERVAL = 30;
-    let blocked = false;
-
-    const report = (seconds) => {
-      if (blocked) return;
-      if (!isContextValid()) { clearInterval(timer); return; }
-      try {
-        chrome.runtime.sendMessage(
-          { type: 'REPORT_USAGE', domain: matchedDomain, seconds },
-          (res) => {
-            if (chrome.runtime.lastError) return;
-            if (res?.action === 'blocked') {
-              blocked = true;
-              clearInterval(timer);
-            }
-          }
-        );
-      } catch {
-        clearInterval(timer);
+    // 2. 監聽來自 Popup 的即時切換指令
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+      if (request.type === 'TOGGLE_DECLUTTER') {
+        sendResponse({ status: "ok" });
+        location.reload(); // 切換設定後重新整理網頁套用規則
       }
-    };
+    });
 
-    report(0);
-
-    const timer = setInterval(() => report(INTERVAL), INTERVAL * 1000);
+  } catch (error) {
+    console.error('[DopamineControl] 核心載入失敗:', error);
   }
-
 })();
