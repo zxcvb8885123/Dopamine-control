@@ -273,6 +273,24 @@
     }
     .btn-save:hover { background: #2a7cef; }
 
+    .btn-report {
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      background: #1a1a1a;
+      color: #9ec2ff;
+      border: 1px solid #2e2e2e;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .btn-report:hover {
+      background: #202020;
+      border-color: #3a8cff;
+    }
+
     .status {
       text-align: center;
       font-size: 12px;
@@ -389,6 +407,7 @@
     </div>
 
     <button class="btn-save" id="save">儲存設定</button>
+    <button class="btn-report" id="open-report">查看數據報表</button>
     <div class="status" id="status"></div>
 
     <div class="kofi-wrap">

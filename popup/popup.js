@@ -65,6 +65,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 儲存
   document.getElementById('save').addEventListener('click', saveSettings);
+  const openReportBtn = document.getElementById('open-report');
+  if (openReportBtn) {
+    openReportBtn.addEventListener('click', openReportPage);
+  }
 });
 
 // ── 輔助：正規化域名 ─────────────────────────────────────────
@@ -237,6 +241,10 @@ function flashInput(input) {
   input.style.borderColor = '#e57373';
   setTimeout(() => { input.style.borderColor = ''; }, 1200);
   input.focus();
+}
+
+function openReportPage() {
+  chrome.tabs.create({ url: chrome.runtime.getURL('popup/report.html') });
 }
 
 // ── 儲存 ──────────────────────────────────────────────────────

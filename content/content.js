@@ -51,12 +51,42 @@
 
     if (!matchedDomain) return;
 
-    const INTERVAL = 30;
+    const INTERVAL = 5;
     let blocked = false;
+    let lastReportAt = Date.now();
+
+    const getDateKey = (timestamp = Date.now()) => {
+      const d = new Date(timestamp);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
+    const persistUsageAnalytics = (domain, seconds) => {
+      if (!seconds) return;
+      chrome.storage.local.get(['usageAnalytics'], (result) => {
+        const current = result.usageAnalytics;
+        const store = (current && typeof current === 'object' && current.days && typeof current.days === 'object')
+          ? { version: Number(current.version) || 1, updatedAt: Number(current.updatedAt) || Date.now(), days: current.days }
+          : { version: 1, updatedAt: Date.now(), days: {} };
+
+        const dateKey = getDateKey();
+        const dayRecord = store.days[dateKey] || { totalSeconds: 0, domains: {} };
+        dayRecord.totalSeconds += seconds;
+        dayRecord.domains[domain] = (dayRecord.domains[domain] || 0) + seconds;
+        store.days[dateKey] = dayRecord;
+        store.updatedAt = Date.now();
+
+        chrome.storage.local.set({ usageAnalytics: store });
+      });
+    };
 
     const report = (seconds) => {
       if (blocked) return;
       if (!isContextValid()) { clearInterval(timer); return; }
+      if (seconds <= 0) return;
+      persistUsageAnalytics(matchedDomain, seconds);
       try {
         chrome.runtime.sendMessage(
           { type: 'REPORT_USAGE', domain: matchedDomain, seconds },
@@ -73,9 +103,25 @@
       }
     };
 
-    report(0);
+    const flushPending = () => {
+      const now = Date.now();
+      const delta = Math.max(0, Math.floor((now - lastReportAt) / 1000));
+      if (delta > 0) {
+        lastReportAt = now;
+        report(delta);
+      }
+    };
 
-    const timer = setInterval(() => report(INTERVAL), INTERVAL * 1000);
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
+      lastReportAt = Date.now();
+      report(INTERVAL);
+    }, INTERVAL * 1000);
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') flushPending();
+    });
+    window.addEventListener('pagehide', flushPending);
   }
 
 })();

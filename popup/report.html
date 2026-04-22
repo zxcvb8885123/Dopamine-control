@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Report</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1b2230;
+      --muted: #677086;
+      --line: #e4e8f0;
+      --accent: #2f6df6;
+      --btn-bg: #eef3ff;
+      --btn-text: #3555a5;
+    }
+
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: "Segoe UI", "Noto Sans TC", sans-serif;
+      background: linear-gradient(180deg, #edf2ff 0%, var(--bg) 70%);
+      color: var(--text);
+    }
+
+    .card {
+      max-width: 420px;
+      margin: 0 auto;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 8px 20px rgba(28, 39, 62, 0.07);
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 18px;
+    }
+
+    .sub {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .range-buttons {
+      display: flex;
+      gap: 8px;
+      margin: 0 0 12px;
+    }
+
+    .range-btn {
+      flex: 1;
+      border: 1px solid #d8e2ff;
+      border-radius: 8px;
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      font-size: 12px;
+      padding: 8px 0;
+      cursor: pointer;
+      transition: all 120ms ease-in;
+    }
+
+    .range-btn.is-active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+
+    .metrics {
+      display: flex;
+      gap: 8px;
+      margin: 0 0 10px;
+    }
+
+    .metric {
+      flex: 1;
+      background: #f8faff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .top-domain {
+      margin: 0 0 12px;
+      padding: 10px;
+      border-radius: 10px;
+      background: #eef4ff;
+      color: #1d3f9a;
+      font-size: 13px;
+      border: 1px solid #dbe6ff;
+    }
+
+    ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 14px;
+    }
+
+    li:last-child {
+      border-bottom: 0;
+    }
+
+    .domain {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 220px;
+    }
+
+    .time {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .empty {
+      color: var(--muted);
+      font-size: 13px;
+      padding: 8px 0 4px;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1 id="report-title">Report</h1>
+    <p class="sub" id="report-range">Loading...</p>
+
+    <div class="range-buttons" role="group" aria-label="Report range" id="range-group">
+      <button type="button" class="range-btn is-active" data-range="daily" aria-pressed="true">Daily</button>
+      <button type="button" class="range-btn" data-range="weekly" aria-pressed="false">Weekly</button>
+      <button type="button" class="range-btn" data-range="monthly" aria-pressed="false">Monthly</button>
+    </div>
+
+    <div class="metrics">
+      <p class="metric" id="period-total">Total: --</p>
+      <p class="metric" id="period-avg">Avg/day: --</p>
+    </div>
+
+    <p class="top-domain" id="top-domain">Top 1: --</p>
+    <ul id="usage-list"></ul>
+    <p class="empty" id="empty-tip" hidden>No usage data for this period.</p>
+  </main>
+
+  <script type="module" src="./report.js"></script>
+</body>
+</html>
