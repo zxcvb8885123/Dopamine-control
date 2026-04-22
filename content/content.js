@@ -1,15 +1,81 @@
-(function() {
-  // 監聽儲存設定並執行
-  chrome.storage.local.get(null, (settings) => {
-    // 預設為啟用，方便妳開發測試
-    const finalSettings = {
-      enabled: settings.enabled !== false,
-      filterSettings: settings.filterSettings || { yt: true, fb: true, ig: true, dc: true }
+/**
+ * content/content.js — Content Script 主入口
+ *
+ * 目前負責：
+ *   1. 強制冷卻（cooldown.js）
+ *   2. 每日限時使用量回報（每 30 秒送一次 REPORT_USAGE 給 background）
+ *
+ * 其他模組（declutter、timer）將由其他人補充。
+ */
+
+(function () {
+  'use strict';
+
+  function isContextValid() {
+    try {
+      return !!chrome.runtime?.id;
+    } catch {
+      return false;
+    }
+  }
+
+  if (!isContextValid()) return;
+
+  chrome.runtime.sendMessage({ type: 'GET_SETTINGS' }, (settings) => {
+    if (chrome.runtime.lastError || !settings) return;
+    if (!settings.enabled) return;
+
+    // 1. 強制冷卻
+    if (window.__ddCooldown) {
+      window.__ddCooldown.run(settings);
+    }
+
+    // 2. 每日限時 usage tracking
+    startUsageTracking(settings);
+
+    // TODO: 其他模組在此呼叫
+    // if (window.__ddDeclutter) window.__ddDeclutter.run(settings);
+    // if (window.__ddTimer)     window.__ddTimer.run(settings);
+  });
+
+  // ── 每日限時使用量回報 ───────────────────────────────────────
+
+  function startUsageTracking(settings) {
+    const { dailyLimits = {} } = settings;
+
+    const hostname = location.hostname.replace(/^www\./, '');
+
+    const matchedDomain = Object.keys(dailyLimits).find(
+      d => hostname === d || hostname.endsWith('.' + d)
+    );
+
+    if (!matchedDomain) return;
+
+    const INTERVAL = 30;
+    let blocked = false;
+
+    const report = (seconds) => {
+      if (blocked) return;
+      if (!isContextValid()) { clearInterval(timer); return; }
+      try {
+        chrome.runtime.sendMessage(
+          { type: 'REPORT_USAGE', domain: matchedDomain, seconds },
+          (res) => {
+            if (chrome.runtime.lastError) return;
+            if (res?.action === 'blocked') {
+              blocked = true;
+              clearInterval(timer);
+            }
+          }
+        );
+      } catch {
+        clearInterval(timer);
+      }
     };
 
-    // 唯讀取妳負責的模組
-    if (window.__ddDeclutter) {
-      window.__ddDeclutter.run(finalSettings);
-    }
-  });
+    report(0);
+
+    const timer = setInterval(() => report(INTERVAL), INTERVAL * 1000);
+  }
+
 })();

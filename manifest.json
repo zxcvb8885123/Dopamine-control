@@ -1,20 +1,46 @@
 {
   "manifest_version": 3,
-  "name": "FocusFlow Pro (去刺激化模組)",
-  "version": "1.0.0",
-  "permissions": ["storage", "tabs"],
+  "name": "Dopamine Detox",
+  "version": "0.1.0",
+  "description": "減少數位刺激，奪回注意力掌控權",
+  "permissions": [
+    "storage",
+    "tabs",
+    "declarativeNetRequest",
+    "alarms"
+  ],
   "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": [
-        "content/declutter.js",
-        "content/content.js"
-      ],
-      "run_at": "document_start"
+      "js": ["content/cooldown.js", "content/content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "block_rules",
+        "enabled": true,
+        "path": "rules/block_rules.json"
+      }
+    ]
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["blocked.html"],
+      "matches": ["<all_urls>"]
     }
   ],
   "action": {
-    "default_popup": "popup/popup-controller.html"
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   }
 }
