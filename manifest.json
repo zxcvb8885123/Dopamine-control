@@ -1,33 +1,20 @@
 {
   "manifest_version": 3,
-  "name": "Dopamine Control",
+  "name": "FocusFlow Pro (去刺激化模組)",
   "version": "1.0.0",
-  "description": "協助使用者減少數位刺激，奪回注意力掌控權。",
-  "permissions": [
-    "storage",
-    "activeTab",
-    "tabs"
-  ],
-  "action": {
-    "default_popup": "popup/popup.html"
-  },
+  "permissions": ["storage", "tabs"],
+  "host_permissions": ["<all_urls>"],
   "content_scripts": [
     {
-      "matches": [
-        "*://*.youtube.com/*",
-        "*://*.facebook.com/*",
-        "*://*.instagram.com/*",
-        "*://*.linkedin.com/*",
-        "*://*.dcard.tw/*"
+      "matches": ["<all_urls>"],
+      "js": [
+        "content/declutter.js",
+        "content/content.js"
       ],
-      "js": ["content/declutter.js"],
       "run_at": "document_start"
     }
   ],
-  "web_accessible_resources": [
-    {
-      "resources": ["modules/*.js"],
-      "matches": ["<all_urls>"]
-    }
-  ]
+  "action": {
+    "default_popup": "popup/popup-controller.html"
+  }
 }
