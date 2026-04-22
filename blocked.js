@@ -89,6 +89,30 @@
     reasonTextEl.textContent = '你已透過 Dopamine Detox 封鎖了這個網站。';
   }
 
+  // 重置今日使用量（僅 reason=limit 時顯示）
+  const btnReset = document.getElementById('btn-reset');
+  if (reason === 'limit' && blockedHost) {
+    btnReset.style.display = 'block';
+    btnReset.addEventListener('click', async () => {
+      const data = await chrome.storage.local.get('dailyUsage');
+      const usage = data.dailyUsage ?? {};
+      usage[blockedHost] = 0;
+      await chrome.storage.local.set({ dailyUsage: usage });
+
+      // 先 await 移除 DNR 規則，再導航，避免規則還在時又被攔截
+      const rules = await chrome.declarativeNetRequest.getDynamicRules();
+      const toRemove = rules
+        .filter(r => r.condition?.urlFilter === `||${blockedHost}/`)
+        .map(r => r.id);
+      if (toRemove.length > 0) {
+        await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: toRemove });
+      }
+
+      chrome.runtime.sendMessage({ type: 'SETTINGS_UPDATED' });
+      location.href = 'https://' + blockedHost;
+    });
+  }
+
   // 開啟 Popup 設定頁
   btnSettings.addEventListener('click', () => {
     chrome.runtime.sendMessage({ type: 'OPEN_POPUP' });
