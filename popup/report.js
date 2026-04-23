@@ -64,20 +64,41 @@ function renderDomainList(domains) {
 
   list.innerHTML = "";
   emptyTip.hidden = domains.length > 0;
+  if (!domains.length) return;
 
-  domains.forEach((item) => {
+  const totalSeconds = domains.reduce((sum, item) => sum + (item.seconds || 0), 0);
+
+  domains.forEach((item, index) => {
     const li = document.createElement("li");
+    const domainRow = document.createElement("div");
+    domainRow.className = "domain-row";
+    const domainLabel = document.createElement("div");
+    domainLabel.className = "domain-label";
+
+    const rankEl = document.createElement("span");
+    rankEl.className = "rank-badge";
+    rankEl.textContent = `#${index + 1}`;
 
     const domainEl = document.createElement("span");
     domainEl.className = "domain";
-    domainEl.textContent = `${item.domain}:`;
+    domainEl.textContent = item.domain;
 
     const timeEl = document.createElement("span");
     timeEl.className = "time";
     timeEl.textContent = formatDuration(item.seconds);
 
-    li.appendChild(domainEl);
-    li.appendChild(timeEl);
+    domainLabel.appendChild(rankEl);
+    domainLabel.appendChild(domainEl);
+    domainRow.appendChild(domainLabel);
+    domainRow.appendChild(timeEl);
+
+    const meta = document.createElement("div");
+    meta.className = "domain-meta";
+    const percentage = Math.round(((item.seconds || 0) / Math.max(1, totalSeconds)) * 100);
+    meta.textContent = `${percentage}%`;
+
+    li.appendChild(domainRow);
+    li.appendChild(meta);
     list.appendChild(li);
   });
 }
