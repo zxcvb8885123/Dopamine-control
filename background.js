@@ -263,13 +263,24 @@ async function handleUsageReport({ domain, seconds }, sender) {
   const limitSec    = dailyLimits[domain] || 0;
 
   // seconds=0 是頁面開啟時的純查詢，不累加
-  const newSeconds = prevSeconds + seconds;
+  // seconds>0 時額外確認分頁是否在前景，背景分頁不計時
+  let effectiveSeconds = seconds;
   if (seconds > 0) {
+    try {
+      const tab = await chrome.tabs.get(sender.tab.id);
+      if (!tab.active) effectiveSeconds = 0;
+    } catch {
+      effectiveSeconds = 0;
+    }
+  }
+
+  const newSeconds = prevSeconds + effectiveSeconds;
+  if (effectiveSeconds > 0) {
     dailyUsage[domain] = newSeconds;
     await chrome.storage.local.set({ dailyUsage });
   }
 
-  const usedSeconds = seconds > 0 ? newSeconds : prevSeconds;
+  const usedSeconds = effectiveSeconds > 0 ? newSeconds : prevSeconds;
 
   if (limitSec > 0 && usedSeconds >= limitSec) {
     // 加 DNR 規則，讓後續所有導航也被網路層攔截

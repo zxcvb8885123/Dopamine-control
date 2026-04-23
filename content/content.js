@@ -53,6 +53,19 @@
 
     const INTERVAL = 30;
     let blocked = false;
+    let pendingSeconds = 0;
+    let lastVisibleAt = document.visibilityState === 'visible' ? Date.now() : null;
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        if (lastVisibleAt !== null) {
+          pendingSeconds += (Date.now() - lastVisibleAt) / 1000;
+          lastVisibleAt = null;
+        }
+      } else {
+        lastVisibleAt = Date.now();
+      }
+    });
 
     const report = (seconds) => {
       if (blocked) return;
@@ -75,7 +88,16 @@
 
     report(0);
 
-    const timer = setInterval(() => report(INTERVAL), INTERVAL * 1000);
+    const timer = setInterval(() => {
+      let seconds = pendingSeconds;
+      if (lastVisibleAt !== null) {
+        seconds += (Date.now() - lastVisibleAt) / 1000;
+        lastVisibleAt = Date.now();
+      }
+      pendingSeconds = 0;
+      const rounded = Math.round(seconds);
+      if (rounded > 0) report(rounded);
+    }, INTERVAL * 1000);
   }
 
 })();
