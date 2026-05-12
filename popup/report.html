@@ -229,6 +229,153 @@
       text-align: center;
     }
 
+    .section {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    .section-title {
+      margin: 0 0 10px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #dce6fb;
+    }
+
+    .ai-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      color: #b9c6e3;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: #111827;
+      color: var(--text);
+      padding: 9px 10px;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(58, 140, 255, 0.16);
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(17, 24, 39, 0.72);
+      color: #dce6fb;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .toggle-row input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+    }
+
+    .custom-fields[hidden] {
+      display: none;
+    }
+
+    .ai-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .ai-btn {
+      flex: 1;
+      border: 1px solid #3b4f78;
+      border-radius: 9px;
+      background: #1b2233;
+      color: #cfe2ff;
+      font-size: 12px;
+      padding: 9px 10px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 150ms ease, background 150ms ease, border-color 150ms ease;
+    }
+
+    .ai-btn:hover {
+      transform: translateY(-1px);
+      background: #202a40;
+      border-color: var(--accent);
+    }
+
+    .ai-btn.primary {
+      background: linear-gradient(180deg, #4b95ff 0%, var(--accent) 100%);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .ai-status {
+      min-height: 18px;
+      margin: 9px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .ai-status.is-error {
+      color: #ff9d9d;
+    }
+
+    .ai-status.is-ok {
+      color: #9ee6b4;
+    }
+
+    .ai-result {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .ai-result[hidden] {
+      display: none;
+    }
+
+    .ai-result-item {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(22, 27, 38, 0.88);
+      padding: 10px;
+    }
+
+    .ai-result-item h3 {
+      margin: 0 0 6px;
+      color: #9dc1ff;
+      font-size: 12px;
+    }
+
+    .ai-result-item p {
+      margin: 0;
+      color: #dce6fb;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(4px); }
       to { opacity: 1; transform: translateY(0); }
@@ -269,6 +416,61 @@
     <p class="top-domain" id="top-domain">Top 1: --</p>
     <ul id="usage-list"></ul>
     <p class="empty" id="empty-tip" hidden>No usage data for this period.</p>
+
+    <section class="section" aria-labelledby="ai-settings-title">
+      <h2 class="section-title" id="ai-settings-title">AI 使用行為分析</h2>
+      <div class="ai-grid">
+        <label class="field">
+          API Provider
+          <select id="ai-provider">
+            <option value="openai">OpenAI</option>
+            <option value="gemini">Gemini</option>
+            <option value="custom">Custom</option>
+          </select>
+        </label>
+
+        <label class="field">
+          API Key
+          <input type="password" id="ai-api-key" autocomplete="off">
+        </label>
+
+        <div class="custom-fields" id="ai-custom-fields" hidden>
+          <label class="field">
+            API Endpoint
+            <input type="text" id="ai-endpoint" placeholder="https://example.com/v1/chat/completions">
+          </label>
+        </div>
+
+        <label class="toggle-row">
+          <span>啟用 AI 分析</span>
+          <input type="checkbox" id="ai-enabled">
+        </label>
+      </div>
+
+      <div class="ai-actions">
+        <button type="button" class="ai-btn" id="ai-save">儲存設定</button>
+        <button type="button" class="ai-btn primary" id="ai-generate">產生 AI 分析</button>
+      </div>
+      <p class="ai-status" id="ai-status"></p>
+      <div class="ai-result" id="ai-result" hidden>
+        <article class="ai-result-item">
+          <h3>今日使用摘要</h3>
+          <p id="ai-summary"></p>
+        </article>
+        <article class="ai-result-item">
+          <h3>分心風險分級</h3>
+          <p id="ai-risk"></p>
+        </article>
+        <article class="ai-result-item">
+          <h3>使用時間異常提醒</h3>
+          <p id="ai-anomaly"></p>
+        </article>
+        <article class="ai-result-item">
+          <h3>明日改善建議</h3>
+          <p id="ai-suggestion"></p>
+        </article>
+      </div>
+    </section>
   </main>
 
   <script type="module" src="./report.js"></script>

@@ -51,9 +51,15 @@
 
     if (!matchedDomain) return;
 
-    const INTERVAL = 5;
+    if (window.__ddUsageTracker?.stop) {
+      window.__ddUsageTracker.stop();
+    }
+
+    const REPORT_INTERVAL = 5;
+    const TICK_INTERVAL_MS = 1000;
     let blocked = false;
-    let lastReportAt = Date.now();
+    let timer = null;
+    let pendingSeconds = 0;
 
     const getDateKey = (timestamp = Date.now()) => {
       const d = new Date(timestamp);
@@ -84,7 +90,10 @@
 
     const report = (seconds) => {
       if (blocked) return;
-      if (!isContextValid()) { clearInterval(timer); return; }
+      if (!isContextValid()) {
+        stopTracking(false);
+        return;
+      }
       if (seconds <= 0) return;
       persistUsageAnalytics(matchedDomain, seconds);
       try {
@@ -94,34 +103,57 @@
             if (chrome.runtime.lastError) return;
             if (res?.action === 'blocked') {
               blocked = true;
-              clearInterval(timer);
+              stopTracking(false);
             }
           }
         );
       } catch {
+        stopTracking(false);
+      }
+    };
+
+    const isActive = () => document.visibilityState === 'visible' && document.hasFocus();
+
+    const flushUsage = () => {
+      if (pendingSeconds <= 0) return;
+      const seconds = pendingSeconds;
+      pendingSeconds = 0;
+      report(seconds);
+    };
+
+    const visibilityHandler = () => {
+      if (!isActive()) flushUsage();
+    };
+
+    const stopTracking = (flush = true) => {
+      if (timer) {
         clearInterval(timer);
+        timer = null;
+      }
+      document.removeEventListener('visibilitychange', visibilityHandler);
+      window.removeEventListener('blur', flushUsage);
+      window.removeEventListener('pagehide', flushUsage);
+      window.removeEventListener('beforeunload', flushUsage);
+      if (flush) flushUsage();
+      if (window.__ddUsageTracker?.stop === stopTracking) {
+        delete window.__ddUsageTracker;
       }
     };
 
-    const flushPending = () => {
-      const now = Date.now();
-      const delta = Math.max(0, Math.floor((now - lastReportAt) / 1000));
-      if (delta > 0) {
-        lastReportAt = now;
-        report(delta);
+    window.__ddUsageTracker = { stop: stopTracking };
+
+    timer = setInterval(() => {
+      if (!isActive()) return;
+      pendingSeconds++;
+      if (pendingSeconds >= REPORT_INTERVAL) {
+        flushUsage();
       }
-    };
+    }, TICK_INTERVAL_MS);
 
-    const timer = setInterval(() => {
-      if (document.visibilityState === 'hidden') return;
-      lastReportAt = Date.now();
-      report(INTERVAL);
-    }, INTERVAL * 1000);
-
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') flushPending();
-    });
-    window.addEventListener('pagehide', flushPending);
+    document.addEventListener('visibilitychange', visibilityHandler);
+    window.addEventListener('blur', flushUsage);
+    window.addEventListener('pagehide', flushUsage);
+    window.addEventListener('beforeunload', flushUsage);
   }
 
 })();
