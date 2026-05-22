@@ -45,8 +45,15 @@ function withChromeStorage(task) {
 }
 
 export async function getUsageStore() {
-  const payload = await withChromeStorage((resolve) => {
-    chrome.storage.local.get([STORAGE_KEY], (result) => resolve(result));
+  const payload = await withChromeStorage((resolve, reject) => {
+    chrome.storage.local.get([STORAGE_KEY], (result) => {
+      const error = chrome.runtime?.lastError;
+      if (error) {
+        reject(new Error(error.message));
+        return;
+      }
+      resolve(result);
+    });
   });
   return sanitizeStore(payload[STORAGE_KEY]);
 }
@@ -54,8 +61,15 @@ export async function getUsageStore() {
 export async function saveUsageStore(store) {
   const normalized = sanitizeStore(store);
   normalized.updatedAt = Date.now();
-  await withChromeStorage((resolve) => {
-    chrome.storage.local.set({ [STORAGE_KEY]: normalized }, () => resolve());
+  await withChromeStorage((resolve, reject) => {
+    chrome.storage.local.set({ [STORAGE_KEY]: normalized }, () => {
+      const error = chrome.runtime?.lastError;
+      if (error) {
+        reject(new Error(error.message));
+        return;
+      }
+      resolve();
+    });
   });
 }
 

@@ -1,4 +1,10 @@
 import { getTodayUsage, getLastNDaysUsage } from "../modules/usage-analytics/summary.js";
+import {
+  getAiSettings,
+  saveAiSettings,
+  generateAiAnalysis,
+  PROVIDER_DEFAULTS,
+} from "../modules/usage-analytics/ai.js";
 
 const REPORT_REFRESH_INTERVAL_MS = 5000;
 
@@ -17,6 +23,10 @@ const TEXT = {
   top1: "\u7b2c\u4e00\u540d",
   noData: "\u6b64\u5340\u9593\u6c92\u6709\u4f7f\u7528\u8cc7\u6599\u3002",
   loadFailed: "\u8f09\u5165\u5931\u6557",
+  aiSaved: "AI \u8a2d\u5b9a\u5df2\u5132\u5b58\u3002",
+  aiAnalyzing: "AI \u5206\u6790\u7522\u751f\u4e2d...",
+  aiReady: "AI \u5206\u6790\u5df2\u5b8c\u6210\u3002",
+  aiKeyRequired: "\u8acb\u5148\u8f38\u5165 API Key \u5f8c\u518d\u4f7f\u7528 AI \u5206\u6790\u529f\u80fd\u3002",
 };
 
 function formatDuration(seconds) {
@@ -134,6 +144,7 @@ function setActiveRange(range) {
 
 let currentRange = "daily";
 let refreshIntervalId = null;
+let latestReport = null;
 
 async function renderReport(range) {
   currentRange = range;
@@ -145,6 +156,7 @@ async function renderReport(range) {
 
   try {
     const report = await getReportData(range);
+    latestReport = report;
 
     rangeEl.textContent = report.title;
     totalEl.textContent = `${TEXT.total}: ${formatDuration(report.totalSeconds)}`;
@@ -162,8 +174,125 @@ async function renderReport(range) {
     rangeEl.textContent = TEXT.loadFailed;
     totalEl.textContent = `${TEXT.total}: --`;
     avgEl.textContent = `${TEXT.avgPerDay}: --`;
+    latestReport = null;
     renderEmptyState();
   }
+}
+
+function getAiFormValues() {
+  return {
+    enabled: document.getElementById("ai-enabled").checked,
+    provider: document.getElementById("ai-provider").value,
+    apiKey: document.getElementById("ai-api-key").value.trim(),
+    endpoint: document.getElementById("ai-endpoint").value.trim(),
+  };
+}
+
+async function getAiAnalysisData() {
+  const today = await getReportData("daily");
+  const weekly = await getLastNDaysUsage(7);
+  const yesterday = weekly.days?.[weekly.days.length - 2]?.totalSeconds || 0;
+
+  return {
+    ...today,
+    history: {
+      last7DaysTotalSeconds: weekly.totalSeconds,
+      last7DaysAvgSeconds: weekly.avgSecondsPerDay,
+      yesterdaySeconds: yesterday,
+    },
+  };
+}
+
+function setAiStatus(message, type = "") {
+  const status = document.getElementById("ai-status");
+  status.textContent = message;
+  status.classList.toggle("is-error", type === "error");
+  status.classList.toggle("is-ok", type === "ok");
+}
+
+function applyProviderDefaults(provider) {
+  const endpointInput = document.getElementById("ai-endpoint");
+  const customFields = document.getElementById("ai-custom-fields");
+  const defaults = PROVIDER_DEFAULTS[provider] || PROVIDER_DEFAULTS.openai;
+
+  customFields.hidden = provider !== "custom";
+  if (provider !== "custom") {
+    endpointInput.value = defaults.endpoint;
+  }
+}
+
+function validateAiSettings(settings) {
+  if (settings.enabled && !settings.apiKey) {
+    return TEXT.aiKeyRequired;
+  }
+  if (settings.enabled && settings.provider === "custom" && !settings.endpoint) {
+    return "請先輸入 Custom API Endpoint。";
+  }
+  return "";
+}
+
+async function loadAiSettings() {
+  const settings = await getAiSettings();
+  document.getElementById("ai-enabled").checked = settings.enabled;
+  document.getElementById("ai-provider").value = settings.provider;
+  document.getElementById("ai-api-key").value = settings.apiKey;
+  document.getElementById("ai-endpoint").value = settings.endpoint;
+  applyProviderDefaults(settings.provider);
+}
+
+async function handleSaveAiSettings() {
+  const settings = getAiFormValues();
+  const error = validateAiSettings(settings);
+  if (error) {
+    setAiStatus(error, "error");
+    return null;
+  }
+
+  const saved = await saveAiSettings(settings);
+  setAiStatus(TEXT.aiSaved, "ok");
+  return saved;
+}
+
+function renderAiAnalysis(analysis) {
+  document.getElementById("ai-summary").textContent = analysis.todaySummary;
+  document.getElementById("ai-risk").textContent = analysis.distractionRisk;
+  document.getElementById("ai-anomaly").textContent = analysis.anomalyAlert;
+  document.getElementById("ai-suggestion").textContent = analysis.tomorrowSuggestion;
+  document.getElementById("ai-result").hidden = false;
+}
+
+async function handleGenerateAiAnalysis() {
+  let settings = await handleSaveAiSettings();
+  if (!settings) return;
+
+  const generateBtn = document.getElementById("ai-generate");
+  generateBtn.disabled = true;
+  setAiStatus(TEXT.aiAnalyzing);
+
+  try {
+    const analysisData = await getAiAnalysisData();
+    const analysis = await generateAiAnalysis(settings, analysisData);
+    renderAiAnalysis(analysis);
+    setAiStatus(TEXT.aiReady, "ok");
+  } catch (error) {
+    setAiStatus(error?.message || "AI 分析失敗，請稍後再試。", "error");
+  } finally {
+    generateBtn.disabled = false;
+  }
+}
+
+function initAiControls() {
+  const providerSelect = document.getElementById("ai-provider");
+  if (!providerSelect) return;
+
+  providerSelect.addEventListener("change", () => {
+    applyProviderDefaults(providerSelect.value);
+  });
+  document.getElementById("ai-save").addEventListener("click", handleSaveAiSettings);
+  document.getElementById("ai-generate").addEventListener("click", handleGenerateAiAnalysis);
+  loadAiSettings().catch((error) => {
+    setAiStatus(error?.message || "AI 設定載入失敗。", "error");
+  });
 }
 
 function localizeStaticText() {
@@ -196,7 +325,14 @@ function initReport() {
   });
 
   renderReport(currentRange);
+  initAiControls();
   startAutoRefresh();
 }
 
-initReport();
+try {
+  initReport();
+} catch (error) {
+  const rangeEl = document.getElementById("report-range");
+  if (rangeEl) rangeEl.textContent = TEXT.loadFailed;
+  console.error("Report init failed", error);
+}
