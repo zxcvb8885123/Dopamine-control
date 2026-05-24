@@ -7,7 +7,6 @@
  *
  * 其他模組（declutter、timer）將由其他人補充。
  */
-
 (function () {
   'use strict';
 
@@ -33,6 +32,10 @@
     // 2. 每日限時 usage tracking
     startUsageTracking(settings);
 
+    // 3. 去介面刺激化
+      if (window.__ddDeclutter) {
+          window.__ddDeclutter.run();
+      }
     // TODO: 其他模組在此呼叫
     // if (window.__ddDeclutter) window.__ddDeclutter.run(settings);
     // if (window.__ddTimer)     window.__ddTimer.run(settings);

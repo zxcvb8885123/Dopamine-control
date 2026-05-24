@@ -18,7 +18,7 @@ let dailyUsage      = {};   // { 'youtube.com': 450 }
 
 document.addEventListener('DOMContentLoaded', async () => {
   const data = await chrome.storage.local.get([
-    'enabled', 'workStart', 'workEnd',
+    'enabled', 'declutterEnabled', 'workStart', 'workEnd',
     'blockedDomains', 'dailyLimits', 'cooldownDomains', 'cooldownSeconds',
     'dailyUsage'
   ]);
@@ -28,6 +28,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   enabledEl.checked = data.enabled ?? true;
   updateEnabledLabel(enabledEl.checked);
   enabledEl.addEventListener('change', () => updateEnabledLabel(enabledEl.checked));
+
+  const declutterToggle = document.getElementById('declutter-toggle');
+  if (declutterToggle) {
+    declutterToggle.checked = data.declutterEnabled ?? true; // 預設為 true
+  }
+
+  // 加入獨立的連動邏輯
+    if (enabledEl && declutterToggle) {
+    enabledEl.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        declutterToggle.checked = true;
+      }
+    });
+  }
 
   document.getElementById('workStart').value = data.workStart ?? '09:00';
   document.getElementById('workEnd').value   = data.workEnd   ?? '18:00';
@@ -262,6 +276,7 @@ async function saveSettings() {
 
   await chrome.storage.local.set({
     enabled:         document.getElementById('enabled').checked,
+    declutterEnabled: document.getElementById('declutter-toggle') ? document.getElementById('declutter-toggle').checked : true,
     workStart,
     workEnd,
     blockedDomains:  [...blockedDomains],
