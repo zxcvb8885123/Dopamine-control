@@ -31,9 +31,11 @@ const TEXT = {
 
 function formatDuration(seconds) {
   const safe = Math.max(0, Math.floor(Number(seconds) || 0));
-  const mins = String(Math.floor(safe / 60)).padStart(2, "0");
-  const secs = String(safe % 60).padStart(2, "0");
-  return `${mins}:${secs}`;
+  if (safe < 60) return "< 1 分";
+  const h = Math.floor(safe / 3600);
+  const m = Math.floor((safe % 3600) / 60);
+  if (h > 0) return `${h} 時 ${m} 分`;
+  return `${m} 分鐘`;
 }
 
 function getRangeTitle(range) {
@@ -102,14 +104,25 @@ function renderDomainList(domains) {
     domainRow.appendChild(domainLabel);
     domainRow.appendChild(timeEl);
 
+    const percentage = Math.round(((item.seconds || 0) / Math.max(1, totalSeconds)) * 100);
+
     const meta = document.createElement("div");
     meta.className = "domain-meta";
-    const percentage = Math.round(((item.seconds || 0) / Math.max(1, totalSeconds)) * 100);
     meta.textContent = `${percentage}%`;
 
+    const progressTrack = document.createElement("div");
+    progressTrack.className = "progress-track";
+    const progressFill = document.createElement("div");
+    progressFill.className = "progress-fill";
+    progressTrack.appendChild(progressFill);
+
+    li.style.animation = `li-in 200ms ease-out ${index * 50}ms both`;
     li.appendChild(domainRow);
     li.appendChild(meta);
+    li.appendChild(progressTrack);
     list.appendChild(li);
+
+    requestAnimationFrame(() => { progressFill.style.width = `${percentage}%`; });
   });
 }
 
@@ -191,7 +204,10 @@ function getAiFormValues() {
 async function getAiAnalysisData() {
   const today = await getReportData("daily");
   const weekly = await getLastNDaysUsage(7);
-  const yesterday = weekly.days?.[weekly.days.length - 2]?.totalSeconds || 0;
+  const yd = new Date(Date.now() - 86400000);
+  const yesterdayKey = `${yd.getFullYear()}-${String(yd.getMonth()+1).padStart(2,'0')}-${String(yd.getDate()).padStart(2,'0')}`;
+  const yesterdayEntry = weekly.days?.find(d => d.date === yesterdayKey);
+  const yesterday = yesterdayEntry?.totalSeconds || 0;
 
   return {
     ...today,
