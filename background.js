@@ -310,5 +310,9 @@ async function resetDailyUsage() {
 }
 
 function getTodayString() {
-  return new Date().toISOString().slice(0, 10); // 'YYYY-MM-DD'
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`; // 本地時區，午夜正確重置
 }

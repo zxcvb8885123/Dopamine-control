@@ -69,6 +69,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (openReportBtn) {
     openReportBtn.addEventListener('click', openReportPage);
   }
+
+  document.getElementById('back-btn').addEventListener('click', () => {
+    document.getElementById('report-view').classList.remove('is-open');
+  });
 });
 
 // ── 輔助：正規化域名 ─────────────────────────────────────────
@@ -136,7 +140,7 @@ function addDomain(inputId, arr, renderFn) {
 // ── 每日限時清單 ──────────────────────────────────────────────
 
 function fmtTime(sec) {
-  if (sec < 60) return `${sec} 秒`;
+  if (sec < 60) return '< 1 分鐘';
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
   if (h > 0) return `${h} 時 ${m} 分`;
@@ -149,7 +153,7 @@ function renderLimitList() {
 
   const entries = Object.entries(dailyLimits);
   if (entries.length === 0) {
-    container.innerHTML = '<div style="font-size:12px;color:#444;padding:4px 0">尚未設定任何限時</div>';
+    container.innerHTML = '<div style="font-size:12px;color:var(--text-dim);padding:4px 0">尚未設定任何限時</div>';
     return;
   }
 
@@ -244,7 +248,7 @@ function flashInput(input) {
 }
 
 function openReportPage() {
-  chrome.tabs.create({ url: chrome.runtime.getURL('popup/report.html') });
+  document.getElementById('report-view').classList.add('is-open');
 }
 
 // ── 儲存 ──────────────────────────────────────────────────────
@@ -281,6 +285,3 @@ function showStatus(msg, color) {
   setTimeout(() => { el.textContent = ''; }, 2000);
 }
 
-document.getElementById('btn-kofi').addEventListener('click', () => {
-  chrome.tabs.create({ url: 'https://ko-fi.com/K3K21Y3P17' });
-});
