@@ -46,10 +46,12 @@ export async function getLastNDaysUsage(days = 7) {
 
   const totalSeconds = totals.reduce((acc, item) => acc + item.totalSeconds, 0);
 
+  const daysWithData = totals.filter(d => d.totalSeconds > 0).length;
+
   return {
     days: totals,
     totalSeconds,
-    avgSecondsPerDay: Math.floor(totalSeconds / Math.max(1, days)),
+    avgSecondsPerDay: Math.floor(totalSeconds / Math.max(1, daysWithData)),
     topDomains: sortDomainEntries(Object.entries(domainTotals)).map(([domain, seconds]) => ({
       domain,
       seconds,

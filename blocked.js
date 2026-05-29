@@ -14,6 +14,11 @@
   const domain  = params.get('domain'); // 'youtube.com'
 
   const iconEl       = document.getElementById('icon');
+  const iconWrapEl   = document.getElementById('icon-wrap');
+
+  const SVG_WORK = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`;
+  const SVG_LIMIT = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+  const SVG_BLOCK = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
   const titleEl      = document.getElementById('title');
   const domainTagEl  = document.getElementById('domain-tag');
   const reasonTextEl = document.getElementById('reason-text');
@@ -36,7 +41,7 @@
 
   // 根據封鎖原因顯示不同內容
   if (reason === 'workhours') {
-    iconEl.textContent = '🧠';
+    iconEl.innerHTML = SVG_WORK;
     titleEl.textContent = '工作時段封鎖中';
     reasonTextEl.textContent =
       '你設定了在工作時段內封鎖這個網站。\n完成工作後再來吧！';
@@ -62,7 +67,9 @@
       }
     }
   } else if (reason === 'limit') {
-    iconEl.textContent = '⏱';
+    iconEl.innerHTML = SVG_LIMIT;
+    iconEl.classList.add('is-limit');
+    iconWrapEl.classList.add('is-limit');
     titleEl.textContent = '今日使用時間已到';
     reasonTextEl.textContent =
       '你設定的每日使用上限已達到。\n明天重置後才能繼續使用。';
@@ -83,8 +90,9 @@
     if (diffM > 0 || diffH === 0) parts.push(`${diffM} 分鐘`);
     infoValueEl.textContent = `明天 00:00（還有 ${parts.join(' ')}）`;
   } else {
-    // 未知原因
-    iconEl.textContent = '🚫';
+    iconEl.innerHTML = SVG_BLOCK;
+    iconEl.classList.add('is-blocked');
+    iconWrapEl.classList.add('is-blocked');
     titleEl.textContent = '此網站已被封鎖';
     reasonTextEl.textContent = '你已透過 Dopamine Detox 封鎖了這個網站。';
   }
