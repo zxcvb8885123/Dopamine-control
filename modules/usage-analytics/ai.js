@@ -104,6 +104,7 @@ function buildUsageSnapshot(report) {
     avgSeconds: Math.max(0, Math.floor(Number(report.avgSeconds) || 0)),
     avgDuration: formatDuration(report.avgSeconds),
     domains,
+    categories: report.categories || [],
     history: report.history || null,
   };
 }
@@ -116,9 +117,10 @@ function buildPrompt(report) {
     "Analyze the selected report range, not only today. rangeTitle tells whether the selected range is today, last 7 days, or last 30 days.",
     "Give short, concrete, actionable observations. Avoid subjective risk labels or moral judgment.",
     "For today, compare with yesterday and the last-7-days average when available.",
-    "For last 7 days or last 30 days, summarize the selected period, daily pattern, and highest-time domains.",
+    "For last 7 days or last 30 days, summarize the selected period, daily pattern, highest-time domains, and category distribution.",
     "Return JSON only. Do not return Markdown or extra text.",
     "Required JSON keys: usageSummary, anomalyAlert, tomorrowSuggestion.",
+    "Each required JSON value must be a plain Traditional Chinese string, not an object or array.",
     `Data: ${JSON.stringify(snapshot)}`,
   ].join("\n");
 }
@@ -139,6 +141,25 @@ function parseJsonObject(text) {
   }
 }
 
+function analysisValueToText(value, fallback) {
+  if (value === null || value === undefined || value === "") return fallback;
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => analysisValueToText(item, ""))
+      .filter(Boolean)
+      .join("\n");
+  }
+  if (typeof value === "object") {
+    return Object.values(value)
+      .map((item) => analysisValueToText(item, ""))
+      .filter(Boolean)
+      .join("\n");
+  }
+  return fallback;
+}
+
 function normalizeAnalysis(text) {
   const parsed = parseJsonObject(text);
   if (!parsed) {
@@ -150,16 +171,39 @@ function normalizeAnalysis(text) {
   }
 
   return {
-    todaySummary: String(
+    todaySummary: analysisValueToText(
       parsed.usageSummary ||
       parsed.todaySummary ||
       "\u4f7f\u7528\u8cc7\u6599\u4e0d\u8db3\uff0c\u66ab\u6642\u7121\u6cd5\u5f62\u6210\u5b8c\u6574\u6458\u8981\u3002"
     ),
-    anomalyAlert: String(parsed.anomalyAlert || "\u76ee\u524d\u6c92\u6709\u660e\u986f\u7570\u5e38\u3002"),
-    tomorrowSuggestion: String(
+    anomalyAlert: analysisValueToText(parsed.anomalyAlert, "\u76ee\u524d\u6c92\u6709\u660e\u986f\u7570\u5e38\u3002"),
+    tomorrowSuggestion: analysisValueToText(
       parsed.tomorrowSuggestion || "\u660e\u65e5\u5148\u5f9e\u964d\u4f4e\u6700\u9ad8\u4f7f\u7528\u7db2\u7ad9\u7684\u6642\u9593\u958b\u59cb\u3002"
     ),
   };
+}
+
+function getFriendlyApiErrorMessage(message, status) {
+  const text = String(message || "");
+  const normalized = text.toLowerCase();
+  const isTemporaryBusy =
+    status === 429 ||
+    status === 503 ||
+    normalized.includes("high demand") ||
+    normalized.includes("overloaded") ||
+    normalized.includes("rate limit") ||
+    normalized.includes("too many requests") ||
+    normalized.includes("try again later");
+
+  if (isTemporaryBusy) {
+    return "\u76ee\u524d AI \u6a21\u578b\u4f7f\u7528\u91cf\u904e\u9ad8\uff0c\u9019\u901a\u5e38\u662f\u66ab\u6642\u6027\u554f\u984c\u3002\u8acb\u7a0d\u5f8c\u91cd\u8a66\uff0c\u6216\u5207\u63db\u5230\u5176\u4ed6 AI Provider \u518d\u7522\u751f\u5206\u6790\u3002";
+  }
+
+  if (status === 401 || status === 403 || normalized.includes("api key")) {
+    return "\u7121\u6cd5\u9a57\u8b49 AI API Key\uff0c\u8acb\u78ba\u8a8d Key \u662f\u5426\u6b63\u78ba\u6216\u6709\u8db3\u5920\u6b0a\u9650\u3002";
+  }
+
+  return text || `API request failed (${status})`;
 }
 
 async function postJson(url, headers, body) {
@@ -175,7 +219,7 @@ async function postJson(url, headers, body) {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     const message = payload?.error?.message || payload?.error || `API request failed (${response.status})`;
-    throw new Error(String(message));
+    throw new Error(getFriendlyApiErrorMessage(message, response.status));
   }
   return payload;
 }

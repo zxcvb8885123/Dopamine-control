@@ -7,6 +7,7 @@ import {
 } from "../modules/usage-analytics/ai.js";
 
 const REPORT_REFRESH_INTERVAL_MS = 5000;
+const DOMAIN_CATEGORY_OVERRIDES_KEY = "usageAnalyticsDomainCategories";
 
 const TEXT = {
   pageTitle: "\u4f7f\u7528\u5831\u544a",
@@ -21,6 +22,7 @@ const TEXT = {
   total: "\u7e3d\u8a08",
   avgPerDay: "\u65e5\u5747",
   top1: "\u7b2c\u4e00\u540d",
+  categoryTitle: "\u5206\u985e\u5206\u5e03",
   noData: "\u6b64\u5340\u9593\u6c92\u6709\u4f7f\u7528\u8cc7\u6599\u3002",
   loadFailed: "\u8f09\u5165\u5931\u6557",
   aiSaved: "AI \u8a2d\u5b9a\u5df2\u5132\u5b58\u3002",
@@ -28,6 +30,132 @@ const TEXT = {
   aiReady: "AI \u5206\u6790\u5df2\u5b8c\u6210\u3002",
   aiKeyRequired: "\u8acb\u5148\u8f38\u5165 API Key \u5f8c\u518d\u4f7f\u7528 AI \u5206\u6790\u529f\u80fd\u3002",
 };
+
+const CATEGORY_DEFINITIONS = [
+  {
+    id: "social",
+    label: "\u793e\u7fa4\u4e92\u52d5",
+    color: "#5ba4ff",
+    domains: [
+      "facebook.com",
+      "instagram.com",
+      "threads.net",
+      "x.com",
+      "twitter.com",
+      "reddit.com",
+      "dcard.tw",
+      "ptt.cc",
+      "linkedin.com",
+      "discord.com",
+      "telegram.org",
+    ],
+  },
+  {
+    id: "shopping",
+    label: "\u8cfc\u7269\u6d88\u8cbb",
+    color: "#f5c96a",
+    domains: [
+      "amazon.com",
+      "shopee.tw",
+      "shopee.com",
+      "momo.com.tw",
+      "momoshop.com.tw",
+      "pchome.com.tw",
+      "24h.pchome.com.tw",
+      "shopping.pchome.com.tw",
+      "rakuten.com",
+      "rakuten.com.tw",
+      "taobao.com",
+      "tmall.com",
+      "ebay.com",
+      "costco.com",
+      "costco.com.tw",
+      "books.com.tw",
+      "pxgo.com.tw",
+      "shop.pxgo.com.tw",
+      "carrefour.com.tw",
+      "feebee.com.tw",
+      "etmall.com.tw",
+      "friiday.tw",
+      "ruten.com.tw",
+      "shopping.friday.tw",
+      "i3fresh.tw",
+      "fitnessfactoryshop.com.tw",
+      "rhinoshield.tw",
+    ],
+  },
+  {
+    id: "entertainment",
+    label: "\u5f71\u97f3\u5a1b\u6a02",
+    color: "#9ee6b4",
+    domains: [
+      "youtube.com",
+      "youtu.be",
+      "netflix.com",
+      "twitch.tv",
+      "tiktok.com",
+      "spotify.com",
+      "disneyplus.com",
+      "primevideo.com",
+      "bilibili.com",
+      "bahamut.com.tw",
+      "gamer.com.tw",
+    ],
+  },
+  {
+    id: "info",
+    label: "\u641c\u5c0b\u8207\u8cc7\u8a0a",
+    color: "#c7a4ff",
+    domains: [
+      "google.com",
+      "google.com.tw",
+      "bing.com",
+      "yahoo.com",
+      "yahoo.com.tw",
+      "wikipedia.org",
+      "medium.com",
+      "news.google.com",
+      "udn.com",
+      "chinatimes.com",
+      "ltn.com.tw",
+      "ettoday.net",
+      "cna.com.tw",
+      "thenewslens.com",
+    ],
+  },
+  {
+    id: "work-learning",
+    label: "\u5de5\u4f5c\u8207\u5b78\u7fd2",
+    color: "#7dd3fc",
+    domains: [
+      "github.com",
+      "gist.github.com",
+      "github.io",
+      "githubusercontent.com",
+      "gitlab.com",
+      "stackoverflow.com",
+      "chatgpt.com",
+      "openai.com",
+      "notion.so",
+      "docs.google.com",
+      "drive.google.com",
+      "classroom.google.com",
+      "coursera.org",
+      "edx.org",
+      "hahow.in",
+      "udemy.com",
+      "khanacademy.org",
+    ],
+  },
+  {
+    id: "other",
+    label: "\u5176\u4ed6",
+    color: "#96a2bd",
+    domains: [],
+  },
+];
+
+let domainCategoryOverrides = {};
 
 function formatDuration(seconds) {
   const safe = Math.max(0, Math.floor(Number(seconds) || 0));
@@ -49,12 +177,38 @@ function getAverageLabel(range) {
   return TEXT.avgPerDay;
 }
 
+function normalizeDomain(domain = "") {
+  return String(domain).trim().toLowerCase().replace(/^www\./, "");
+}
+
+async function loadDomainCategoryOverrides() {
+  const data = await chrome.storage.local.get([DOMAIN_CATEGORY_OVERRIDES_KEY]);
+  domainCategoryOverrides = data[DOMAIN_CATEGORY_OVERRIDES_KEY] || {};
+}
+
+async function saveDomainCategoryOverride(domain, categoryId) {
+  const normalized = normalizeDomain(domain);
+  if (!normalized) return;
+
+  domainCategoryOverrides = {
+    ...domainCategoryOverrides,
+    [normalized]: categoryId,
+  };
+  await chrome.storage.local.set({
+    [DOMAIN_CATEGORY_OVERRIDES_KEY]: domainCategoryOverrides,
+  });
+}
+
 function renderEmptyState() {
   const list = document.getElementById("usage-list");
+  const categoryList = document.getElementById("category-list");
   const emptyTip = document.getElementById("empty-tip");
   const topDomain = document.getElementById("top-domain");
 
   list.innerHTML = "";
+  list.dataset.signature = "";
+  categoryList.innerHTML = "";
+  categoryList.dataset.signature = "";
   emptyTip.hidden = false;
   topDomain.textContent = `${TEXT.top1}: --`;
 }
@@ -70,60 +224,365 @@ function renderTopDomain(domains) {
   topDomain.textContent = `${TEXT.top1}: ${first.domain} (${formatDuration(first.seconds)})`;
 }
 
-function renderDomainList(domains) {
-  const list = document.getElementById("usage-list");
-  const emptyTip = document.getElementById("empty-tip");
+function getDomainSignature(domains) {
+  return buildDomainGroups(domains)
+    .map((group) => `${group.id}:${group.domains.map((item) => item.domain).join(",")}`)
+    .join("|");
+}
 
-  list.innerHTML = "";
-  emptyTip.hidden = domains.length > 0;
-  if (!domains.length) return;
+function domainMatches(domain, ruleDomain) {
+  return domain === ruleDomain || domain.endsWith(`.${ruleDomain}`);
+}
 
-  const totalSeconds = domains.reduce((sum, item) => sum + (item.seconds || 0), 0);
+function looksLikeShoppingDomain(domain) {
+  const shoppingKeywords = ["shop", "store", "mall", "market", "mart"];
+  const falsePositiveKeywords = ["workshop", "photoshop"];
+  if (falsePositiveKeywords.some((keyword) => domain.includes(keyword))) return false;
+  return shoppingKeywords.some((keyword) => domain.includes(keyword));
+}
 
-  domains.forEach((item, index) => {
+function getDomainCategory(domain) {
+  const normalized = normalizeDomain(domain);
+  const overrideCategory = CATEGORY_DEFINITIONS.find(
+    (category) => category.id === domainCategoryOverrides[normalized]
+  );
+  if (overrideCategory) return overrideCategory;
+
+  const matchedCategory = CATEGORY_DEFINITIONS.find((category) =>
+    category.id !== "other" && category.domains.some((ruleDomain) => domainMatches(normalized, ruleDomain))
+  );
+  if (matchedCategory) return matchedCategory;
+  if (looksLikeShoppingDomain(normalized)) {
+    return CATEGORY_DEFINITIONS.find((category) => category.id === "shopping");
+  }
+  return CATEGORY_DEFINITIONS.find((category) => category.id === "other");
+}
+
+function buildCategorySummary(domains) {
+  const totals = new Map(
+    CATEGORY_DEFINITIONS.map((category) => [
+      category.id,
+      { ...category, seconds: 0 },
+    ])
+  );
+
+  domains.forEach((item) => {
+    const category = getDomainCategory(item.domain);
+    const current = totals.get(category.id);
+    current.seconds += Math.max(0, Math.floor(Number(item.seconds) || 0));
+  });
+
+  return [...totals.values()]
+    .filter((category) => category.seconds > 0)
+    .sort((a, b) => b.seconds - a.seconds);
+}
+
+function buildDomainGroups(domains) {
+  const groups = new Map(
+    CATEGORY_DEFINITIONS.map((category) => [
+      category.id,
+      { ...category, seconds: 0, domains: [] },
+    ])
+  );
+
+  domains.forEach((item) => {
+    const category = getDomainCategory(item.domain);
+    const group = groups.get(category.id);
+    const safeSeconds = Math.max(0, Math.floor(Number(item.seconds) || 0));
+    group.seconds += safeSeconds;
+    group.domains.push({ ...item, seconds: safeSeconds });
+  });
+
+  return [...groups.values()]
+    .filter((group) => group.domains.length > 0)
+    .map((group) => ({
+      ...group,
+      domains: group.domains.sort((a, b) => b.seconds - a.seconds),
+    }))
+    .sort((a, b) => b.seconds - a.seconds);
+}
+
+function getCategorySignature(categories) {
+  return categories.map((item) => item.id).join("|");
+}
+
+function scrollToDomainGroup(categoryId) {
+  const group = document.querySelector(`[data-group="${CSS.escape(categoryId)}"]`);
+  if (!group) return;
+
+  document.querySelectorAll(".domain-group.is-highlighted").forEach((item) => {
+    item.classList.remove("is-highlighted");
+  });
+
+  group.scrollIntoView({ behavior: "smooth", block: "start" });
+  group.classList.add("is-highlighted");
+  window.setTimeout(() => {
+    group.classList.remove("is-highlighted");
+  }, 1400);
+}
+
+function updateCategoryList(categories) {
+  const list = document.getElementById("category-list");
+  const totalSeconds = categories.reduce((sum, item) => sum + item.seconds, 0);
+
+  categories.forEach((item) => {
+    const row = list.querySelector(`[data-category="${CSS.escape(item.id)}"]`);
+    if (!row) return;
+
+    const percentage = Math.round((item.seconds / Math.max(1, totalSeconds)) * 100);
+    row.querySelector(".category-time").textContent = `${formatDuration(item.seconds)} · ${percentage}%`;
+    row.querySelector(".category-fill").style.width = `${percentage}%`;
+  });
+}
+
+function renderCategoryList(categories, options = {}) {
+  const list = document.getElementById("category-list");
+  const { animate = true, force = false } = options;
+  const nextSignature = getCategorySignature(categories);
+
+  if (!categories.length) {
+    list.innerHTML = "";
+    list.dataset.signature = "";
+    return;
+  }
+
+  if (!force && list.dataset.signature === nextSignature) {
+    updateCategoryList(categories);
+    return;
+  }
+
+  list.dataset.signature = nextSignature;
+
+  const totalSeconds = categories.reduce((sum, item) => sum + item.seconds, 0);
+  const fragment = document.createDocumentFragment();
+
+  categories.forEach((item, index) => {
+    const percentage = Math.round((item.seconds / Math.max(1, totalSeconds)) * 100);
     const li = document.createElement("li");
-    const domainRow = document.createElement("div");
-    domainRow.className = "domain-row";
-    const domainLabel = document.createElement("div");
-    domainLabel.className = "domain-label";
+    li.className = "category-item";
+    li.dataset.category = item.id;
+    li.tabIndex = 0;
+    li.setAttribute("role", "button");
+    li.setAttribute("aria-label", `前往${item.label}網站清單`);
+    li.style.setProperty("--category-color", item.color);
+    li.style.setProperty("--category-glow", `${item.color}44`);
+    if (animate) {
+      li.style.animation = `li-in 200ms ease-out ${index * 40}ms both`;
+    }
 
-    const rankEl = document.createElement("span");
-    rankEl.className = "rank-badge";
-    rankEl.textContent = `#${index + 1}`;
+    const categoryRow = document.createElement("div");
+    categoryRow.className = "category-row";
+    const categoryLabel = document.createElement("span");
+    categoryLabel.className = "category-label";
+    const dot = document.createElement("span");
+    dot.className = "category-dot";
+    dot.setAttribute("aria-hidden", "true");
+    const label = document.createElement("span");
+    label.textContent = item.label;
+    const time = document.createElement("span");
+    time.className = "category-time";
+    time.textContent = `${formatDuration(item.seconds)} · ${percentage}%`;
 
-    const domainEl = document.createElement("span");
-    domainEl.className = "domain";
-    domainEl.textContent = item.domain;
+    categoryLabel.appendChild(dot);
+    categoryLabel.appendChild(label);
+    categoryRow.appendChild(categoryLabel);
+    categoryRow.appendChild(time);
 
-    const timeEl = document.createElement("span");
-    timeEl.className = "time";
-    timeEl.textContent = formatDuration(item.seconds);
+    const track = document.createElement("div");
+    track.className = "category-track";
+    const fill = document.createElement("div");
+    fill.className = "category-fill";
+    track.appendChild(fill);
 
-    domainLabel.appendChild(rankEl);
-    domainLabel.appendChild(domainEl);
-    domainRow.appendChild(domainLabel);
-    domainRow.appendChild(timeEl);
+    li.appendChild(categoryRow);
+    li.appendChild(track);
+    fragment.appendChild(li);
+
+    li.addEventListener("click", () => scrollToDomainGroup(item.id));
+    li.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        scrollToDomainGroup(item.id);
+      }
+    });
+
+    if (animate) {
+      requestAnimationFrame(() => { fill.style.width = `${percentage}%`; });
+    } else {
+      fill.style.width = `${percentage}%`;
+    }
+  });
+
+  list.replaceChildren(fragment);
+}
+
+function updateDomainList(domains) {
+  const list = document.getElementById("usage-list");
+  const totalSeconds = domains.reduce((sum, item) => sum + (item.seconds || 0), 0);
+  const groups = buildDomainGroups(domains);
+
+  groups.forEach((group) => {
+    const groupEl = list.querySelector(`[data-group="${CSS.escape(group.id)}"]`);
+    if (groupEl) {
+      groupEl.querySelector(".domain-group-time").textContent = formatDuration(group.seconds);
+    }
+  });
+
+  domains.forEach((item) => {
+    const row = list.querySelector(`[data-domain="${CSS.escape(item.domain)}"]`);
+    if (!row) return;
 
     const percentage = Math.round(((item.seconds || 0) / Math.max(1, totalSeconds)) * 100);
-
-    const meta = document.createElement("div");
-    meta.className = "domain-meta";
-    meta.textContent = `${percentage}%`;
-
-    const progressTrack = document.createElement("div");
-    progressTrack.className = "progress-track";
-    const progressFill = document.createElement("div");
-    progressFill.className = "progress-fill";
-    progressTrack.appendChild(progressFill);
-
-    li.style.animation = `li-in 200ms ease-out ${index * 50}ms both`;
-    li.appendChild(domainRow);
-    li.appendChild(meta);
-    li.appendChild(progressTrack);
-    list.appendChild(li);
-
-    requestAnimationFrame(() => { progressFill.style.width = `${percentage}%`; });
+    row.querySelector(".time").textContent = formatDuration(item.seconds);
+    row.querySelector(".domain-meta").textContent = `${percentage}%`;
+    row.querySelector(".progress-fill").style.width = `${percentage}%`;
   });
+}
+
+function renderDomainList(domains, options = {}) {
+  const list = document.getElementById("usage-list");
+  const emptyTip = document.getElementById("empty-tip");
+  const { animate = true, force = false } = options;
+  const nextSignature = getDomainSignature(domains);
+
+  emptyTip.hidden = domains.length > 0;
+  if (!domains.length) {
+    list.innerHTML = "";
+    list.dataset.signature = "";
+    return;
+  }
+
+  if (!force && list.dataset.signature === nextSignature) {
+    updateDomainList(domains);
+    return;
+  }
+
+  list.dataset.signature = nextSignature;
+
+  const totalSeconds = domains.reduce((sum, item) => sum + (item.seconds || 0), 0);
+  const groups = buildDomainGroups(domains);
+  const fragment = document.createDocumentFragment();
+  let rank = 1;
+
+  groups.forEach((group, groupIndex) => {
+    const groupLi = document.createElement("li");
+    groupLi.className = "domain-group";
+    groupLi.dataset.group = group.id;
+    groupLi.style.setProperty("--category-color", group.color);
+    groupLi.style.setProperty("--category-glow", `${group.color}44`);
+    if (animate) {
+      groupLi.style.animation = `li-in 200ms ease-out ${groupIndex * 60}ms both`;
+    }
+
+    const header = document.createElement("div");
+    header.className = "domain-group-header";
+    const title = document.createElement("div");
+    title.className = "domain-group-title";
+    const dot = document.createElement("span");
+    dot.className = "category-dot";
+    dot.setAttribute("aria-hidden", "true");
+    const label = document.createElement("span");
+    label.textContent = group.label;
+    const groupTime = document.createElement("span");
+    groupTime.className = "domain-group-time";
+    groupTime.textContent = formatDuration(group.seconds);
+
+    title.appendChild(dot);
+    title.appendChild(label);
+    header.appendChild(title);
+    header.appendChild(groupTime);
+
+    const groupList = document.createElement("div");
+    groupList.className = "domain-group-list";
+
+    group.domains.forEach((item) => {
+      const domainCard = document.createElement("div");
+      domainCard.className = "domain-item";
+      domainCard.dataset.domain = item.domain;
+      const domainRow = document.createElement("div");
+      domainRow.className = "domain-row";
+      const domainLabel = document.createElement("div");
+      domainLabel.className = "domain-label";
+
+      const rankEl = document.createElement("span");
+      rankEl.className = "rank-badge";
+      rankEl.textContent = `#${rank}`;
+      rank += 1;
+
+      const domainEl = document.createElement("span");
+      domainEl.className = "domain";
+      domainEl.textContent = item.domain;
+
+      const timeEl = document.createElement("span");
+      timeEl.className = "time";
+      timeEl.textContent = formatDuration(item.seconds);
+      const categorySelect = document.createElement("select");
+      categorySelect.className = "domain-category-select";
+      categorySelect.setAttribute("aria-label", `調整 ${item.domain} 分類`);
+      CATEGORY_DEFINITIONS.forEach((category) => {
+        const option = document.createElement("option");
+        option.value = category.id;
+        option.textContent = category.label;
+        categorySelect.appendChild(option);
+      });
+      categorySelect.value = getDomainCategory(item.domain).id;
+      categorySelect.addEventListener("change", async () => {
+        await saveDomainCategoryOverride(item.domain, categorySelect.value);
+        refreshCategoryOverrideView();
+      });
+
+      domainLabel.appendChild(rankEl);
+      domainLabel.appendChild(domainEl);
+      domainRow.appendChild(domainLabel);
+      domainRow.appendChild(timeEl);
+
+      const percentage = Math.round(((item.seconds || 0) / Math.max(1, totalSeconds)) * 100);
+
+      const meta = document.createElement("div");
+      meta.className = "domain-meta";
+      meta.textContent = `${percentage}%`;
+
+      const progressTrack = document.createElement("div");
+      progressTrack.className = "progress-track";
+      const progressFill = document.createElement("div");
+      progressFill.className = "progress-fill";
+      progressTrack.appendChild(progressFill);
+
+      domainCard.appendChild(domainRow);
+      domainCard.appendChild(meta);
+      domainCard.appendChild(progressTrack);
+      domainCard.appendChild(categorySelect);
+      groupList.appendChild(domainCard);
+
+      if (animate) {
+        requestAnimationFrame(() => { progressFill.style.width = `${percentage}%`; });
+      } else {
+        progressFill.style.width = `${percentage}%`;
+      }
+    });
+
+    groupLi.appendChild(header);
+    groupLi.appendChild(groupList);
+    fragment.appendChild(groupLi);
+  });
+
+  list.replaceChildren(fragment);
+}
+
+function refreshCategoryOverrideView() {
+  if (!latestReport?.domains?.length) return;
+
+  const previousScrollY = window.scrollY;
+  const domains = [...latestReport.domains].sort((a, b) => b.seconds - a.seconds);
+  renderCategoryList(buildCategorySummary(domains), {
+    animate: false,
+    force: true,
+  });
+  renderDomainList(domains, {
+    animate: false,
+    force: true,
+  });
+  window.scrollTo({ top: previousScrollY, behavior: "instant" });
 }
 
 async function getReportData(range) {
@@ -162,7 +621,9 @@ let currentRange = "daily";
 let refreshIntervalId = null;
 let latestReport = null;
 
-async function renderReport(range) {
+async function renderReport(range, options = {}) {
+  const { animate = true, forceList = false } = options;
+  const rangeChanged = currentRange !== range;
   currentRange = range;
   const rangeEl = document.getElementById("report-range");
   const totalEl = document.getElementById("period-total");
@@ -185,7 +646,14 @@ async function renderReport(range) {
     }
 
     renderTopDomain(domains);
-    renderDomainList(domains);
+    renderCategoryList(buildCategorySummary(domains), {
+      animate,
+      force: forceList || rangeChanged,
+    });
+    renderDomainList(domains, {
+      animate,
+      force: forceList || rangeChanged,
+    });
   } catch {
     rangeEl.textContent = TEXT.loadFailed;
     totalEl.textContent = `${TEXT.total}: --`;
@@ -216,6 +684,7 @@ async function getAiAnalysisData() {
 
   return {
     ...selectedReport,
+    categories: buildCategorySummary(selectedReport.domains || []),
     history: {
       selectedRange: currentRange,
       selectedPeriodDays: periodDays,
@@ -329,31 +798,37 @@ function localizeStaticText() {
   document.getElementById("period-total").textContent = `${TEXT.total}: --`;
   document.getElementById("period-avg").textContent = `${TEXT.avgPerDay}: --`;
   document.getElementById("top-domain").textContent = `${TEXT.top1}: --`;
+  document.getElementById("category-title").textContent = TEXT.categoryTitle;
   document.getElementById("empty-tip").textContent = TEXT.noData;
 }
 
 function startAutoRefresh() {
   if (refreshIntervalId) clearInterval(refreshIntervalId);
   refreshIntervalId = setInterval(() => {
-    renderReport(currentRange);
+    renderReport(currentRange, { animate: false });
   }, REPORT_REFRESH_INTERVAL_MS);
 }
 
-function initReport() {
+async function initReport() {
+  await loadDomainCategoryOverrides();
   localizeStaticText();
   document.querySelectorAll("[data-range]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      renderReport(btn.dataset.range);
+      renderReport(btn.dataset.range, { animate: true, forceList: true });
     });
   });
 
-  renderReport(currentRange);
+  renderReport(currentRange, { animate: true, forceList: true });
   initAiControls();
   startAutoRefresh();
 }
 
 try {
-  initReport();
+  initReport().catch((error) => {
+    const rangeEl = document.getElementById("report-range");
+    if (rangeEl) rangeEl.textContent = TEXT.loadFailed;
+    console.error("Report init failed", error);
+  });
 } catch (error) {
   const rangeEl = document.getElementById("report-range");
   if (rangeEl) rangeEl.textContent = TEXT.loadFailed;
