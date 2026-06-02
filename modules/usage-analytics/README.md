@@ -29,7 +29,7 @@ Usage Analytics 由三層組成：
   - 近 7 天統計
   - 近 30 天統計
 - 報表 UI 顯示各網站使用時間分布
-- AI 使用行為分析，提供摘要、風險分級、異常提醒與明日改善建議
+- AI 使用行為分析，提供摘要、異常提醒與明日改善建議
 
 ## Newly Added Features
 
@@ -48,7 +48,6 @@ Usage Analytics 由三層組成：
 - 可儲存 API Provider、API Key、Endpoint 等設定到 `chrome.storage.local`。
 - 產生分析時會結合今日使用量、近 7 天平均與昨日使用量，輸出：
   - 今日使用摘要
-  - 分心風險分級
   - 使用時間異常提醒
   - 明日改善建議
 

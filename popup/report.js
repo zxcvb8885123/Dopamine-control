@@ -130,6 +130,7 @@ async function getReportData(range) {
   if (range === "daily") {
     const daily = await getTodayUsage();
     return {
+      range,
       title: getRangeTitle(range),
       totalSeconds: daily.totalSeconds,
       avgSeconds: daily.totalSeconds,
@@ -140,10 +141,12 @@ async function getReportData(range) {
   const days = range === "weekly" ? 7 : 30;
   const report = await getLastNDaysUsage(days);
   return {
+    range,
     title: getRangeTitle(range),
     totalSeconds: report.totalSeconds,
     avgSeconds: report.avgSecondsPerDay,
     domains: report.topDomains || [],
+    days: report.days || [],
   };
 }
 
@@ -202,16 +205,21 @@ function getAiFormValues() {
 }
 
 async function getAiAnalysisData() {
-  const today = await getReportData("daily");
+  const selectedReport = await getReportData(currentRange);
   const weekly = await getLastNDaysUsage(7);
+  const periodDays = currentRange === "monthly" ? 30 : currentRange === "weekly" ? 7 : 1;
+  const periodReport = currentRange === "monthly" ? await getLastNDaysUsage(30) : weekly;
   const yd = new Date(Date.now() - 86400000);
   const yesterdayKey = `${yd.getFullYear()}-${String(yd.getMonth()+1).padStart(2,'0')}-${String(yd.getDate()).padStart(2,'0')}`;
   const yesterdayEntry = weekly.days?.find(d => d.date === yesterdayKey);
   const yesterday = yesterdayEntry?.totalSeconds || 0;
 
   return {
-    ...today,
+    ...selectedReport,
     history: {
+      selectedRange: currentRange,
+      selectedPeriodDays: periodDays,
+      selectedPeriodDailyTotals: periodReport.days || [],
       last7DaysTotalSeconds: weekly.totalSeconds,
       last7DaysAvgSeconds: weekly.avgSecondsPerDay,
       yesterdaySeconds: yesterday,
@@ -271,7 +279,6 @@ async function handleSaveAiSettings() {
 
 function renderAiAnalysis(analysis) {
   document.getElementById("ai-summary").textContent = analysis.todaySummary;
-  document.getElementById("ai-risk").textContent = analysis.distractionRisk;
   document.getElementById("ai-anomaly").textContent = analysis.anomalyAlert;
   document.getElementById("ai-suggestion").textContent = analysis.tomorrowSuggestion;
   document.getElementById("ai-result").hidden = false;

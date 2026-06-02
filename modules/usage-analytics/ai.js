@@ -82,8 +82,8 @@ function formatDuration(seconds) {
   const safe = Math.max(0, Math.floor(Number(seconds) || 0));
   const hours = Math.floor(safe / 3600);
   const minutes = Math.floor((safe % 3600) / 60);
-  if (hours > 0) return `${hours} 小時 ${minutes} 分鐘`;
-  return `${minutes} 分鐘`;
+  if (hours > 0) return `${hours}\u5c0f\u6642 ${minutes}\u5206\u9418`;
+  return `${minutes}\u5206\u9418`;
 }
 
 function buildUsageSnapshot(report) {
@@ -97,6 +97,7 @@ function buildUsageSnapshot(report) {
     }));
 
   return {
+    range: report.range || null,
     rangeTitle: report.title,
     totalSeconds: Math.max(0, Math.floor(Number(report.totalSeconds) || 0)),
     totalDuration: formatDuration(report.totalSeconds),
@@ -110,13 +111,15 @@ function buildUsageSnapshot(report) {
 function buildPrompt(report) {
   const snapshot = buildUsageSnapshot(report);
   return [
-    "你是 Dopamine-control Chrome Extension 的使用行為分析助手。",
-    "請根據 usageAnalytics 的網站使用時間資料，用繁體中文給出簡短、具體、可執行的建議。",
-    "history 若存在，請用近 7 天平均與昨日資料判斷今日是否異常。",
-    "請只輸出 JSON，不要 Markdown，不要額外說明。",
-    "JSON 欄位必須包含：todaySummary、distractionRisk、anomalyAlert、tomorrowSuggestion。",
-    "distractionRisk 請使用「低風險」、「中風險」或「高風險」開頭。",
-    `資料：${JSON.stringify(snapshot)}`,
+    "You are the usage-analysis assistant for the Dopamine-control Chrome extension.",
+    "Analyze usageAnalytics data and respond in Traditional Chinese.",
+    "Analyze the selected report range, not only today. rangeTitle tells whether the selected range is today, last 7 days, or last 30 days.",
+    "Give short, concrete, actionable observations. Avoid subjective risk labels or moral judgment.",
+    "For today, compare with yesterday and the last-7-days average when available.",
+    "For last 7 days or last 30 days, summarize the selected period, daily pattern, and highest-time domains.",
+    "Return JSON only. Do not return Markdown or extra text.",
+    "Required JSON keys: usageSummary, anomalyAlert, tomorrowSuggestion.",
+    `Data: ${JSON.stringify(snapshot)}`,
   ].join("\n");
 }
 
@@ -140,18 +143,22 @@ function normalizeAnalysis(text) {
   const parsed = parseJsonObject(text);
   if (!parsed) {
     return {
-      todaySummary: text || "AI 沒有回傳可讀取的分析內容。",
-      distractionRisk: "無法判定",
-      anomalyAlert: "請稍後重新產生分析。",
-      tomorrowSuggestion: "先設定一個明確的使用上限，再觀察明日變化。",
+      todaySummary: text || "\u672a\u6536\u5230\u53ef\u8b80\u53d6\u7684 AI \u5206\u6790\u5167\u5bb9\u3002",
+      anomalyAlert: "\u8acb\u7a0d\u5f8c\u91cd\u65b0\u7522\u751f\u5206\u6790\u3002",
+      tomorrowSuggestion: "\u5148\u8a2d\u5b9a\u4e00\u500b\u660e\u78ba\u7684\u4f7f\u7528\u4e0a\u9650\uff0c\u518d\u89c0\u5bdf\u660e\u65e5\u8b8a\u5316\u3002",
     };
   }
 
   return {
-    todaySummary: String(parsed.todaySummary || "今日使用資料不足，暫時無法形成完整摘要。"),
-    distractionRisk: String(parsed.distractionRisk || "無法判定"),
-    anomalyAlert: String(parsed.anomalyAlert || "目前沒有明顯異常。"),
-    tomorrowSuggestion: String(parsed.tomorrowSuggestion || "明日先從降低最高使用網站的時間開始。"),
+    todaySummary: String(
+      parsed.usageSummary ||
+      parsed.todaySummary ||
+      "\u4f7f\u7528\u8cc7\u6599\u4e0d\u8db3\uff0c\u66ab\u6642\u7121\u6cd5\u5f62\u6210\u5b8c\u6574\u6458\u8981\u3002"
+    ),
+    anomalyAlert: String(parsed.anomalyAlert || "\u76ee\u524d\u6c92\u6709\u660e\u986f\u7570\u5e38\u3002"),
+    tomorrowSuggestion: String(
+      parsed.tomorrowSuggestion || "\u660e\u65e5\u5148\u5f9e\u964d\u4f4e\u6700\u9ad8\u4f7f\u7528\u7db2\u7ad9\u7684\u6642\u9593\u958b\u59cb\u3002"
+    ),
   };
 }
 
@@ -180,7 +187,7 @@ async function callOpenAi(settings, prompt) {
     {
       model: settings.model || PROVIDER_DEFAULTS.openai.model,
       messages: [
-        { role: "system", content: "你會輸出簡潔、有效的繁體中文 JSON 分析。" },
+        { role: "system", content: "Return concise Traditional Chinese JSON only." },
         { role: "user", content: prompt },
       ],
       temperature: 0.2,
@@ -216,7 +223,7 @@ async function callGemini(settings, prompt) {
 async function callCustom(settings, prompt) {
   const body = {
     messages: [
-      { role: "system", content: "你會輸出簡潔、有效的繁體中文 JSON 分析。" },
+      { role: "system", content: "Return concise Traditional Chinese JSON only." },
       { role: "user", content: prompt },
     ],
     temperature: 0.2,
@@ -225,11 +232,7 @@ async function callCustom(settings, prompt) {
     body.model = settings.model;
   }
 
-  const payload = await postJson(
-    settings.endpoint,
-    { Authorization: `Bearer ${settings.apiKey}` },
-    body
-  );
+  const payload = await postJson(settings.endpoint, { Authorization: `Bearer ${settings.apiKey}` }, body);
 
   return (
     payload?.choices?.[0]?.message?.content ||
@@ -242,13 +245,13 @@ async function callCustom(settings, prompt) {
 export async function generateAiAnalysis(settings, report) {
   const normalized = normalizeSettings(settings);
   if (!normalized.enabled) {
-    throw new Error("請先啟用 AI 分析功能。");
+    throw new Error("\u8acb\u5148\u555f\u7528 AI \u5206\u6790\u529f\u80fd\u3002");
   }
   if (!normalized.apiKey.trim()) {
-    throw new Error("請先輸入 API Key 後再使用 AI 分析功能。");
+    throw new Error("\u8acb\u5148\u8f38\u5165 API Key \u5f8c\u518d\u4f7f\u7528 AI \u5206\u6790\u529f\u80fd\u3002");
   }
   if (normalized.provider === "custom" && !normalized.endpoint.trim()) {
-    throw new Error("請先輸入 Custom API Endpoint。");
+    throw new Error("\u8acb\u5148\u8f38\u5165 Custom API Endpoint\u3002");
   }
 
   const prompt = buildPrompt(report);
