@@ -36,7 +36,7 @@
     }
 
     .card {
-      max-width: 1080px;
+      max-width: 430px;
       margin: 0 auto;
       background: var(--surface);
       border: 1px solid var(--border);
@@ -598,10 +598,12 @@
       }
 
       .card {
+        max-width: 900px;
         display: grid;
-        grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.9fr);
+        grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
         gap: 16px 18px;
         align-items: start;
+        padding: 20px;
       }
 
       h1,
@@ -620,7 +622,7 @@
 
       .section {
         grid-column: 2;
-        grid-row: 5 / span 3;
+        grid-row: 5 / span 4;
         margin-top: 0;
         padding: 16px;
         border: 1px solid var(--border);
@@ -629,11 +631,7 @@
       }
 
       .domain {
-        max-width: 320px;
-      }
-
-      .ai-result {
-        gap: 10px;
+        max-width: 280px;
       }
     }
 
@@ -706,15 +704,15 @@
       <p class="ai-status" id="ai-status"></p>
       <div class="ai-result" id="ai-result" hidden>
         <article class="ai-result-item">
-          <h3>今日使用摘要</h3>
+          <h3 id="ai-summary-title">今日使用摘要</h3>
           <p id="ai-summary"></p>
         </article>
         <article class="ai-result-item">
-          <h3>使用時間異常提醒</h3>
+          <h3 id="ai-anomaly-title">使用時間提醒</h3>
           <p id="ai-anomaly"></p>
         </article>
         <article class="ai-result-item">
-          <h3>明日改善建議</h3>
+          <h3 id="ai-suggestion-title">明日改善建議</h3>
           <p id="ai-suggestion"></p>
         </article>
       </div>

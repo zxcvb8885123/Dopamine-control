@@ -69,42 +69,27 @@
     let timer = null;
     let pendingSeconds = 0;
 
-    const getDateKey = (timestamp = Date.now()) => {
-      const d = new Date(timestamp);
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${y}-${m}-${day}`;
-    };
-
     const persistUsageAnalytics = (domain, seconds) => {
       if (!seconds || !isContextValid()) return;
-      chrome.storage.local.get(['usageAnalytics'], (result) => {
-        try {
-          if (chrome.runtime.lastError) return;
-
-          const current = result.usageAnalytics;
-          const store = (current && typeof current === 'object' && current.days && typeof current.days === 'object')
-            ? { version: Number(current.version) || 1, updatedAt: Number(current.updatedAt) || Date.now(), days: current.days }
-            : { version: 1, updatedAt: Date.now(), days: {} };
-
-          const dateKey = getDateKey();
-          const dayRecord = store.days[dateKey] || { totalSeconds: 0, domains: {} };
-          dayRecord.totalSeconds += seconds;
-          dayRecord.domains[domain] = (dayRecord.domains[domain] || 0) + seconds;
-          store.days[dateKey] = dayRecord;
-          store.updatedAt = Date.now();
-
-          const cutoff = getDateKey(Date.now() - 30 * 86400 * 1000);
-          for (const key of Object.keys(store.days)) {
-            if (key < cutoff) delete store.days[key];
+      try {
+        // Module 3 writes are serialized by the background worker to prevent
+        // concurrent tabs from overwriting the same usageAnalytics snapshot.
+        chrome.runtime.sendMessage(
+          {
+            type: 'REPORT_ANALYTICS_USAGE',
+            domain,
+            seconds,
+            timestamp: Date.now()
+          },
+          () => {
+            if (chrome.runtime.lastError) {
+              // Ignore when the extension context is no longer available.
+            }
           }
-
-          chrome.storage.local.set({ usageAnalytics: store });
-        } catch {
-          // Ignore when the extension context is no longer available.
-        }
-      });
+        );
+      } catch {
+        // Ignore when the extension context is no longer available.
+      }
     };
 
     const reportDailyLimit = (seconds) => {

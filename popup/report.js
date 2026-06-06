@@ -591,8 +591,10 @@ async function getReportData(range) {
     return {
       range,
       title: getRangeTitle(range),
+      date: daily.date,
       totalSeconds: daily.totalSeconds,
       avgSeconds: daily.totalSeconds,
+      daysWithData: daily.totalSeconds > 0 ? 1 : 0,
       domains: daily.domains || [],
     };
   }
@@ -604,6 +606,7 @@ async function getReportData(range) {
     title: getRangeTitle(range),
     totalSeconds: report.totalSeconds,
     avgSeconds: report.avgSecondsPerDay,
+    daysWithData: report.daysWithData,
     domains: report.topDomains || [],
     days: report.days || [],
   };
@@ -672,11 +675,22 @@ function getAiFormValues() {
   };
 }
 
-async function getAiAnalysisData() {
-  const selectedReport = await getReportData(currentRange);
+async function getAiAnalysisData(range) {
+  const selectedReport = await getReportData(range);
   const weekly = await getLastNDaysUsage(7);
-  const periodDays = currentRange === "monthly" ? 30 : currentRange === "weekly" ? 7 : 1;
-  const periodReport = currentRange === "monthly" ? await getLastNDaysUsage(30) : weekly;
+  const periodDays = range === "monthly" ? 30 : range === "weekly" ? 7 : 1;
+  const periodReport =
+    range === "monthly"
+      ? await getLastNDaysUsage(30)
+      : range === "weekly"
+        ? weekly
+        : {
+            days: [{
+              date: selectedReport.date,
+              totalSeconds: selectedReport.totalSeconds,
+            }],
+            daysWithData: selectedReport.daysWithData,
+          };
   const yd = new Date(Date.now() - 86400000);
   const yesterdayKey = `${yd.getFullYear()}-${String(yd.getMonth()+1).padStart(2,'0')}-${String(yd.getDate()).padStart(2,'0')}`;
   const yesterdayEntry = weekly.days?.find(d => d.date === yesterdayKey);
@@ -686,8 +700,9 @@ async function getAiAnalysisData() {
     ...selectedReport,
     categories: buildCategorySummary(selectedReport.domains || []),
     history: {
-      selectedRange: currentRange,
+      selectedRange: range,
       selectedPeriodDays: periodDays,
+      selectedPeriodDaysWithData: periodReport.daysWithData || 0,
       selectedPeriodDailyTotals: periodReport.days || [],
       last7DaysTotalSeconds: weekly.totalSeconds,
       last7DaysAvgSeconds: weekly.avgSecondsPerDay,
@@ -746,7 +761,33 @@ async function handleSaveAiSettings() {
   return saved;
 }
 
-function renderAiAnalysis(analysis) {
+function getAiResultTitles(range) {
+  if (range === "weekly") {
+    return {
+      summary: "近 7 天使用摘要",
+      anomaly: "每週使用趨勢提醒",
+      suggestion: "下週改善建議",
+    };
+  }
+  if (range === "monthly") {
+    return {
+      summary: "近 30 天使用摘要",
+      anomaly: "每月使用趨勢提醒",
+      suggestion: "下月改善建議",
+    };
+  }
+  return {
+    summary: "今日使用摘要",
+    anomaly: "使用時間提醒",
+    suggestion: "明日改善建議",
+  };
+}
+
+function renderAiAnalysis(analysis, range) {
+  const titles = getAiResultTitles(range);
+  document.getElementById("ai-summary-title").textContent = titles.summary;
+  document.getElementById("ai-anomaly-title").textContent = titles.anomaly;
+  document.getElementById("ai-suggestion-title").textContent = titles.suggestion;
   document.getElementById("ai-summary").textContent = analysis.todaySummary;
   document.getElementById("ai-anomaly").textContent = analysis.anomalyAlert;
   document.getElementById("ai-suggestion").textContent = analysis.tomorrowSuggestion;
@@ -758,13 +799,14 @@ async function handleGenerateAiAnalysis() {
   if (!settings) return;
 
   const generateBtn = document.getElementById("ai-generate");
+  const analysisRange = currentRange;
   generateBtn.disabled = true;
   setAiStatus(TEXT.aiAnalyzing);
 
   try {
-    const analysisData = await getAiAnalysisData();
+    const analysisData = await getAiAnalysisData(analysisRange);
     const analysis = await generateAiAnalysis(settings, analysisData);
-    renderAiAnalysis(analysis);
+    renderAiAnalysis(analysis, analysisRange);
     setAiStatus(TEXT.aiReady, "ok");
   } catch (error) {
     setAiStatus(error?.message || "AI 分析失敗，請稍後再試。", "error");

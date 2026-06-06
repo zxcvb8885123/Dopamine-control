@@ -111,12 +111,20 @@ function buildUsageSnapshot(report) {
 
 function buildPrompt(report) {
   const snapshot = buildUsageSnapshot(report);
+  const rangeInstruction =
+    snapshot.range === "weekly"
+      ? "The selected range is the last 7 calendar days. End with a practical recommendation for next week."
+      : snapshot.range === "monthly"
+        ? "The selected range is the last 30 calendar days. End with a practical recommendation for next month."
+        : "The selected range is today. Compare today with yesterday and the recorded-day average for the last 7 days, then give a practical recommendation for tomorrow.";
   return [
     "You are the usage-analysis assistant for the Dopamine-control Chrome extension.",
     "Analyze usageAnalytics data and respond in Traditional Chinese.",
     "Analyze the selected report range, not only today. rangeTitle tells whether the selected range is today, last 7 days, or last 30 days.",
+    rangeInstruction,
+    "history.selectedPeriodDailyTotals contains every calendar date in the selected range, including zero-use days.",
+    "history.selectedPeriodDaysWithData is the number of recorded days. avgSeconds is calculated using recorded days only, not every calendar day.",
     "Give short, concrete, actionable observations. Avoid subjective risk labels or moral judgment.",
-    "For today, compare with yesterday and the last-7-days average when available.",
     "For last 7 days or last 30 days, summarize the selected period, daily pattern, highest-time domains, and category distribution.",
     "Return JSON only. Do not return Markdown or extra text.",
     "Required JSON keys: usageSummary, anomalyAlert, tomorrowSuggestion.",
