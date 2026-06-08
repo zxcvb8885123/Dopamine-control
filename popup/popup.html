@@ -320,42 +320,6 @@
       margin-top: 20px;
     }
 
-    #report-view {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: var(--bg);
-      z-index: 100;
-      flex-direction: column;
-    }
-    #report-view.is-open { display: flex; }
-
-    .report-nav {
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--border-soft);
-      flex-shrink: 0;
-    }
-
-    #back-btn {
-      background: none;
-      border: none;
-      color: var(--accent-soft);
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 600;
-      padding: 0;
-      width: auto;
-      margin: 0;
-      transition: color 150ms;
-    }
-    #back-btn:hover { color: var(--accent); }
-
-    #report-iframe {
-      flex: 1;
-      border: none;
-      width: 100%;
-      min-height: 0;
-    }
   </style>
 </head>
 <body>
@@ -426,13 +390,6 @@
     <button class="btn-report" id="open-report">查看數據報表</button>
     <div class="status" id="status"></div>
 
-  </div>
-
-  <div id="report-view">
-    <div class="report-nav">
-      <button id="back-btn">← 返回設定</button>
-    </div>
-    <iframe id="report-iframe" src="report.html"></iframe>
   </div>
 
   <script src="popup.js"></script>
