@@ -474,6 +474,49 @@ function renderDomainList(domains, options = {}) {
       groupLi.style.animation = `li-in 200ms ease-out ${groupIndex * 60}ms both`;
     }
 
+  domains.forEach((item, index) => {
+    const li = document.createElement("li");
+    const domainRow = document.createElement("div");
+    domainRow.className = "domain-row";
+    const domainLabel = document.createElement("div");
+    domainLabel.className = "domain-label";
+
+    const rankEl = document.createElement("span");
+    rankEl.className = "rank-badge";
+    rankEl.textContent = `#${index + 1}`;
+
+    const domainEl = document.createElement("span");
+    domainEl.className = "domain";
+    domainEl.textContent = item.domain;
+
+    const timeEl = document.createElement("span");
+    timeEl.className = "time";
+    timeEl.textContent = formatDuration(item.seconds);
+
+    domainLabel.appendChild(rankEl);
+    domainLabel.appendChild(domainEl);
+    domainRow.appendChild(domainLabel);
+    domainRow.appendChild(timeEl);
+
+    const percentage = Math.round(((item.seconds || 0) / Math.max(1, totalSeconds)) * 100);
+
+    const meta = document.createElement("div");
+    meta.className = "domain-meta";
+    meta.textContent = `${percentage}%`;
+
+    const progressTrack = document.createElement("div");
+    progressTrack.className = "progress-track";
+    const progressFill = document.createElement("div");
+    progressFill.className = "progress-fill";
+    progressTrack.appendChild(progressFill);
+
+    li.style.animation = `li-in 200ms ease-out ${index * 50}ms both`;
+    li.appendChild(domainRow);
+    li.appendChild(meta);
+    li.appendChild(progressTrack);
+    list.appendChild(li);
+
+    requestAnimationFrame(() => { progressFill.style.width = `${percentage}%`; });
     const header = document.createElement("div");
     header.className = "domain-group-header";
     const title = document.createElement("div");
