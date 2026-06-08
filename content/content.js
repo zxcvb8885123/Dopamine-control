@@ -1,11 +1,10 @@
 /**
- * content/content.js — Content Script 主入口
+ * content/content.js - Content script entry
  *
- * 目前負責：
- *   1. 強制冷卻（cooldown.js）
- *   2. 每日限時使用量回報（每 30 秒送一次 REPORT_USAGE 給 background）
- *
- * 其他模組（declutter、timer）將由其他人補充。
+ * Responsibilities:
+ *   1. Run cooldown overlay logic.
+ *   2. Track foreground usage for analytics.
+ *   3. Report usage only for domains with daily limits.
  */
 
 (function () {
@@ -23,22 +22,31 @@
 
   chrome.runtime.sendMessage({ type: 'GET_SETTINGS' }, (settings) => {
     if (chrome.runtime.lastError || !settings) return;
-    if (!settings.enabled) return;
+    applySettings(settings);
+  });
 
-    // 1. 強制冷卻
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type === 'APPLY_SETTINGS') {
+      applySettings(msg.settings);
+    }
+  });
+
+  function applySettings(settings) {
+    if (!settings?.enabled) {
+      window.__ddUsageTracker?.stop?.();
+      return;
+    }
+
     if (window.__ddCooldown) {
       window.__ddCooldown.run(settings);
     }
 
-    // 2. 每日限時 usage tracking
     startUsageTracking(settings);
 
-    // TODO: 其他模組在此呼叫
+    // Other modules can be enabled here when integrated.
     // if (window.__ddDeclutter) window.__ddDeclutter.run(settings);
     // if (window.__ddTimer)     window.__ddTimer.run(settings);
-  });
-
-  // ── 每日限時使用量回報 ───────────────────────────────────────
+  }
 
   function startUsageTracking(settings) {
     const { dailyLimits = {} } = settings;
@@ -47,6 +55,7 @@
     if (!hostname) return;
 
     // matchedDomain 只用於每日限時回報；analytics 追蹤所有網站
+    // matchedDomain is only for daily-limit reports; analytics tracks all sites.
     const matchedDomain = Object.keys(dailyLimits).find(
       d => hostname === d || hostname.endsWith('.' + d)
     );
@@ -68,14 +77,6 @@
     INTERACTION_EVENTS.forEach(ev =>
       document.addEventListener(ev, onInteraction, { passive: true, capture: true })
     );
-
-    const getDateKey = (timestamp = Date.now()) => {
-      const d = new Date(timestamp);
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${y}-${m}-${day}`;
-    };
 
     const persistUsageAnalytics = (domain, seconds) => {
       if (!seconds || !isContextValid()) return;
@@ -107,6 +108,27 @@
     };
 
     // 只有設了每日上限的網域才送 REPORT_USAGE（觸發封鎖判斷）
+      try {
+        // Module 3 writes are serialized by the background worker to prevent
+        // concurrent tabs from overwriting the same usageAnalytics snapshot.
+        chrome.runtime.sendMessage(
+          {
+            type: 'REPORT_ANALYTICS_USAGE',
+            domain,
+            seconds,
+            timestamp: Date.now()
+          },
+          () => {
+            if (chrome.runtime.lastError) {
+              // Ignore when the extension context is no longer available.
+            }
+          }
+        );
+      } catch {
+        // Ignore when the extension context is no longer available.
+      }
+    };
+
     const reportDailyLimit = (seconds) => {
       if (!matchedDomain || blocked) return;
       if (!isContextValid()) { stopTracking(true); return; }
@@ -134,6 +156,10 @@
     const isActive = () =>
       document.visibilityState === 'visible' &&
       ((Date.now() - lastInteractionAt) < IDLE_THRESHOLD_MS || isMediaPlaying());
+    // Screen-time style tracking: if the tab is visible and focused, count it.
+    const isActive = () =>
+      document.visibilityState === 'visible' &&
+      document.hasFocus();
 
     const flushUsage = () => {
       if (pendingSeconds <= 0) return;
@@ -141,6 +167,8 @@
       pendingSeconds = 0;
       persistUsageAnalytics(hostname, seconds);  // 所有網站都記
       reportDailyLimit(seconds);                 // 只有限時網域才回報
+      persistUsageAnalytics(hostname, seconds);
+      reportDailyLimit(seconds);
     };
 
     const visibilityHandler = () => {
@@ -181,5 +209,4 @@
     window.addEventListener('pagehide', flushUsage);
     window.addEventListener('beforeunload', flushUsage);
   }
-
 })();

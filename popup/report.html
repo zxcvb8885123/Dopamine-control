@@ -134,6 +134,104 @@
       font-weight: 600;
     }
 
+    .category-card {
+      margin: 0 0 12px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(17, 24, 39, 0.52);
+    }
+
+    .category-title {
+      margin: 0 0 10px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .category-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 8px;
+    }
+
+    .category-item {
+      padding: 0;
+      border: none;
+      background: transparent;
+      border-radius: 0;
+      cursor: pointer;
+    }
+
+    .category-item:hover {
+      transform: none;
+      border-color: transparent;
+      background: transparent;
+    }
+
+    .category-item:hover .category-label,
+    .category-item:focus-visible .category-label {
+      color: var(--accent-soft);
+    }
+
+    .category-item:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 4px;
+      border-radius: 8px;
+    }
+
+    .category-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .category-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .category-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--category-color, var(--accent));
+      box-shadow: 0 0 12px var(--category-glow, rgba(58,140,255,0.28));
+      flex-shrink: 0;
+    }
+
+    .category-time {
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .category-track {
+      height: 5px;
+      border-radius: 999px;
+      background: var(--surface-2);
+      overflow: hidden;
+    }
+
+    .category-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--category-color, var(--accent)), rgba(132, 182, 255, 0.86));
+      transition: width 500ms ease;
+    }
+
     ul {
       margin: 0;
       padding: 0;
@@ -155,6 +253,89 @@
       transform: translateY(-1px);
       border-color: rgba(58,140,255,0.45);
       background: var(--surface-2);
+    }
+
+    .domain-group {
+      padding: 12px;
+      border: 1px solid var(--border);
+      background: rgba(26, 32, 48, 0.72);
+      border-radius: 12px;
+      scroll-margin-top: 20px;
+    }
+
+    .domain-group:hover {
+      transform: none;
+      border-color: var(--border);
+      background: rgba(26, 32, 48, 0.72);
+    }
+
+    .domain-group.is-highlighted {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-dim), 0 14px 32px rgba(58, 140, 255, 0.16);
+    }
+
+    .domain-group-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(43, 50, 69, 0.72);
+    }
+
+    .domain-group-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .domain-group-time {
+      color: var(--accent-soft);
+      font-size: 12px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .domain-group-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .domain-item {
+      padding: 10px;
+      border: 1px solid rgba(43, 50, 69, 0.84);
+      background: var(--surface-2);
+      border-radius: 10px;
+    }
+
+    .domain-item:hover {
+      transform: translateY(-1px);
+      border-color: rgba(58,140,255,0.45);
+      background: var(--surface-2);
+    }
+
+    .domain-category-select {
+      width: 100%;
+      margin-top: 9px;
+      border: 1px solid rgba(58,140,255,0.28);
+      border-radius: 9px;
+      background: rgba(15, 17, 22, 0.58);
+      color: var(--accent-soft);
+      padding: 7px 9px;
+      font-size: 12px;
+      font-weight: 700;
+      outline: none;
+    }
+
+    .domain-category-select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-dim);
     }
 
     .domain-row {
@@ -411,6 +592,49 @@
       }
     }
 
+    @media (min-width: 760px) {
+      body {
+        padding: 24px;
+      }
+
+      .card {
+        max-width: 900px;
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
+        gap: 16px 18px;
+        align-items: start;
+        padding: 20px;
+      }
+
+      h1,
+      .sub,
+      .range-buttons,
+      .metrics {
+        grid-column: 1 / -1;
+      }
+
+      .top-domain,
+      .category-card,
+      #usage-list,
+      .empty {
+        grid-column: 1;
+      }
+
+      .section {
+        grid-column: 2;
+        grid-row: 5 / span 4;
+        margin-top: 0;
+        padding: 16px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: rgba(17, 24, 39, 0.36);
+      }
+
+      .domain {
+        max-width: 280px;
+      }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       * {
         animation: none !important;
@@ -436,6 +660,10 @@
     </div>
 
     <p class="top-domain" id="top-domain">Top 1: --</p>
+    <section class="category-card" aria-labelledby="category-title">
+      <h2 class="category-title" id="category-title">分類分布</h2>
+      <ul class="category-list" id="category-list"></ul>
+    </section>
     <ul id="usage-list"></ul>
     <p class="empty" id="empty-tip" hidden>No usage data for this period.</p>
 
@@ -476,19 +704,15 @@
       <p class="ai-status" id="ai-status"></p>
       <div class="ai-result" id="ai-result" hidden>
         <article class="ai-result-item">
-          <h3>今日使用摘要</h3>
+          <h3 id="ai-summary-title">今日使用摘要</h3>
           <p id="ai-summary"></p>
         </article>
         <article class="ai-result-item">
-          <h3>分心風險分級</h3>
-          <p id="ai-risk"></p>
-        </article>
-        <article class="ai-result-item">
-          <h3>使用時間異常提醒</h3>
+          <h3 id="ai-anomaly-title">使用時間提醒</h3>
           <p id="ai-anomaly"></p>
         </article>
         <article class="ai-result-item">
-          <h3>明日改善建議</h3>
+          <h3 id="ai-suggestion-title">明日改善建議</h3>
           <p id="ai-suggestion"></p>
         </article>
       </div>

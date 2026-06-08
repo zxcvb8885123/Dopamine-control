@@ -249,6 +249,8 @@ function flashInput(input) {
 
 function openReportPage() {
   document.getElementById('report-view').classList.add('is-open');
+  const reportUrl = chrome.runtime.getURL('popup/report.html');
+  chrome.tabs.create({ url: reportUrl });
 }
 
 // ── 儲存 ──────────────────────────────────────────────────────
