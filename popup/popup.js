@@ -70,9 +70,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     openReportBtn.addEventListener('click', openReportPage);
   }
 
-  document.getElementById('back-btn').addEventListener('click', () => {
-    document.getElementById('report-view').classList.remove('is-open');
-  });
 });
 
 // ── 輔助：正規化域名 ─────────────────────────────────────────
@@ -248,7 +245,8 @@ function flashInput(input) {
 }
 
 function openReportPage() {
-  document.getElementById('report-view').classList.add('is-open');
+  const reportUrl = chrome.runtime.getURL('popup/report.html');
+  chrome.tabs.create({ url: reportUrl });
 }
 
 // ── 儲存 ──────────────────────────────────────────────────────

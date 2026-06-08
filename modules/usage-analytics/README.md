@@ -29,7 +29,7 @@ Usage Analytics 由三層組成：
   - 近 7 天統計
   - 近 30 天統計
 - 報表 UI 顯示各網站使用時間分布
-- AI 使用行為分析，提供摘要、風險分級、異常提醒與明日改善建議
+- AI 使用行為分析，依每日、每週或每月範圍提供摘要、趨勢提醒與下一期間改善建議
 
 ## Newly Added Features
 
@@ -46,11 +46,9 @@ Usage Analytics 由三層組成：
 - 報表頁新增「AI 使用行為分析」區塊。
 - 支援 OpenAI、Gemini 與 Custom API Endpoint。
 - 可儲存 API Provider、API Key、Endpoint 等設定到 `chrome.storage.local`。
-- 產生分析時會結合今日使用量、近 7 天平均與昨日使用量，輸出：
-  - 今日使用摘要
-  - 分心風險分級
-  - 使用時間異常提醒
-  - 明日改善建議
+- 產生分析時會依目前選擇的每日、近 7 天或近 30 天資料進行分析。
+- 每日分析會參考昨日與近 7 天有紀錄日平均；每週與每月分析會使用所選期間的每日資料、網站排行與分類分布。
+- 輸出標題與建議期間會配合所選範圍，例如明日、下週或下月改善建議。
 
 ### 3. 報表頁互動強化
 - 新增「儲存設定」與「產生 AI 分析」按鈕。
@@ -65,8 +63,8 @@ Usage Analytics 由三層組成：
 ## Data Flow
 1. 使用者停留在網站時，content script 持續累計秒數
 2. 每 5 秒批次回報一次使用秒數
-3. 資料寫入 `usageAnalytics`
-4. 同時送出 `REPORT_USAGE` 給 background，用於每日限時判斷
+3. 使用 `REPORT_ANALYTICS_USAGE` 傳給 background，透過單一寫入佇列依序更新 `usageAnalytics`，避免多分頁同時寫入時互相覆蓋
+4. 若網站設有每日限制，另外送出 `REPORT_USAGE` 給 background 進行限時判斷
 5. 報表頁讀取資料並進行統計顯示
 6. 若使用者啟用 AI 分析，報表頁會整理使用資料並呼叫指定的 AI API 產生建議
 
