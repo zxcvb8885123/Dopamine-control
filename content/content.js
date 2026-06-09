@@ -65,9 +65,14 @@
 
     const REPORT_INTERVAL = 5;
     const TICK_INTERVAL_MS = 1000;
+    const IDLE_THRESHOLD_MS = 2 * 60 * 1000;
     let blocked = false;
     let timer = null;
     let pendingSeconds = 0;
+    let lastInteraction = Date.now();
+    const onInteraction = () => { lastInteraction = Date.now(); };
+    const INTERACTION_EVENTS = ['mousemove', 'keydown', 'scroll', 'click', 'touchstart'];
+    INTERACTION_EVENTS.forEach(e => document.addEventListener(e, onInteraction, { passive: true }));
 
     const persistUsageAnalytics = (domain, seconds) => {
       if (!seconds || !isContextValid()) return;
@@ -112,10 +117,15 @@
       }
     };
 
-    // Screen-time style tracking: if the tab is visible and focused, count it.
-    const isActive = () =>
-      document.visibilityState === 'visible' &&
-      document.hasFocus();
+    const hasActiveMedia = () =>
+      Array.from(document.querySelectorAll('video, audio'))
+        .some(el => !el.paused && !el.ended && el.readyState > 2);
+
+    const isActive = () => {
+      if (document.visibilityState !== 'visible') return false;
+      if (hasActiveMedia()) return true;
+      return document.hasFocus() && Date.now() - lastInteraction < IDLE_THRESHOLD_MS;
+    };
 
     const flushUsage = () => {
       if (pendingSeconds <= 0) return;
@@ -138,6 +148,7 @@
       window.removeEventListener('blur', flushUsage);
       window.removeEventListener('pagehide', flushUsage);
       window.removeEventListener('beforeunload', flushUsage);
+      INTERACTION_EVENTS.forEach(e => document.removeEventListener(e, onInteraction));
       if (flush) flushUsage();
       if (window.__ddUsageTracker?.stop === stopTracking) {
         delete window.__ddUsageTracker;
