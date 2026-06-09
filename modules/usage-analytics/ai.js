@@ -1,7 +1,6 @@
 const AI_SETTINGS_KEY = "aiSettings";
 
 const DEFAULT_AI_SETTINGS = {
-  enabled: false,
   provider: "openai",
   apiKey: "",
   model: "gpt-4o-mini",
@@ -17,10 +16,6 @@ const PROVIDER_DEFAULTS = {
     model: "gemini-2.5-flash",
     endpoint: "https://generativelanguage.googleapis.com/v1beta/models",
   },
-  custom: {
-    model: "",
-    endpoint: "",
-  },
 };
 
 function withChromeStorage(task) {
@@ -34,18 +29,17 @@ function withChromeStorage(task) {
 }
 
 function normalizeSettings(rawValue) {
-  const provider = ["openai", "gemini", "custom"].includes(rawValue?.provider)
+  const provider = ["openai", "gemini"].includes(rawValue?.provider)
     ? rawValue.provider
     : DEFAULT_AI_SETTINGS.provider;
   const defaults = PROVIDER_DEFAULTS[provider];
 
   return {
     ...DEFAULT_AI_SETTINGS,
-    enabled: Boolean(rawValue?.enabled),
     provider,
     apiKey: String(rawValue?.apiKey || ""),
-    model: provider === "custom" ? String(rawValue?.model || "") : defaults.model,
-    endpoint: String(rawValue?.endpoint || defaults.endpoint),
+    model: defaults.model,
+    endpoint: defaults.endpoint,
   };
 }
 
@@ -272,47 +266,17 @@ async function callGemini(settings, prompt) {
   return payload?.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("") || "";
 }
 
-async function callCustom(settings, prompt) {
-  const body = {
-    messages: [
-      { role: "system", content: "Return concise Traditional Chinese JSON only." },
-      { role: "user", content: prompt },
-    ],
-    temperature: 0.2,
-  };
-  if (settings.model) {
-    body.model = settings.model;
-  }
-
-  const payload = await postJson(settings.endpoint, { Authorization: `Bearer ${settings.apiKey}` }, body);
-
-  return (
-    payload?.choices?.[0]?.message?.content ||
-    payload?.output_text ||
-    payload?.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("") ||
-    ""
-  );
-}
-
 export async function generateAiAnalysis(settings, report) {
   const normalized = normalizeSettings(settings);
-  if (!normalized.enabled) {
-    throw new Error("\u8acb\u5148\u555f\u7528 AI \u5206\u6790\u529f\u80fd\u3002");
-  }
   if (!normalized.apiKey.trim()) {
     throw new Error("\u8acb\u5148\u8f38\u5165 API Key \u5f8c\u518d\u4f7f\u7528 AI \u5206\u6790\u529f\u80fd\u3002");
-  }
-  if (normalized.provider === "custom" && !normalized.endpoint.trim()) {
-    throw new Error("\u8acb\u5148\u8f38\u5165 Custom API Endpoint\u3002");
   }
 
   const prompt = buildPrompt(report);
   const text =
     normalized.provider === "gemini"
       ? await callGemini(normalized, prompt)
-      : normalized.provider === "custom"
-        ? await callCustom(normalized, prompt)
-        : await callOpenAi(normalized, prompt);
+      : await callOpenAi(normalized, prompt);
 
   return normalizeAnalysis(text);
 }
