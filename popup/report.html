@@ -479,30 +479,6 @@
       box-shadow: 0 0 0 2px rgba(58, 140, 255, 0.16);
     }
 
-    .toggle-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 9px 10px;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: rgba(17, 24, 39, 0.72);
-      color: var(--text);
-      font-size: 13px;
-      font-weight: 700;
-    }
-
-    .toggle-row input {
-      width: 18px;
-      height: 18px;
-      accent-color: var(--accent);
-    }
-
-    .custom-fields[hidden] {
-      display: none;
-    }
-
     .ai-actions {
       display: flex;
       gap: 8px;
@@ -675,7 +651,6 @@
           <select id="ai-provider">
             <option value="openai">OpenAI</option>
             <option value="gemini">Gemini</option>
-            <option value="custom">Custom</option>
           </select>
         </label>
 
@@ -684,17 +659,6 @@
           <input type="password" id="ai-api-key" autocomplete="off">
         </label>
 
-        <div class="custom-fields" id="ai-custom-fields" hidden>
-          <label class="field">
-            API Endpoint
-            <input type="text" id="ai-endpoint" placeholder="https://example.com/v1/chat/completions">
-          </label>
-        </div>
-
-        <label class="toggle-row">
-          <span>啟用 AI 分析</span>
-          <input type="checkbox" id="ai-enabled">
-        </label>
       </div>
 
       <div class="ai-actions">

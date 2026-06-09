@@ -3,7 +3,6 @@ import {
   getAiSettings,
   saveAiSettings,
   generateAiAnalysis,
-  PROVIDER_DEFAULTS,
 } from "../modules/usage-analytics/ai.js";
 
 const REPORT_REFRESH_INTERVAL_MS = 5000;
@@ -668,10 +667,8 @@ async function renderReport(range, options = {}) {
 
 function getAiFormValues() {
   return {
-    enabled: document.getElementById("ai-enabled").checked,
     provider: document.getElementById("ai-provider").value,
     apiKey: document.getElementById("ai-api-key").value.trim(),
-    endpoint: document.getElementById("ai-endpoint").value.trim(),
   };
 }
 
@@ -718,34 +715,17 @@ function setAiStatus(message, type = "") {
   status.classList.toggle("is-ok", type === "ok");
 }
 
-function applyProviderDefaults(provider) {
-  const endpointInput = document.getElementById("ai-endpoint");
-  const customFields = document.getElementById("ai-custom-fields");
-  const defaults = PROVIDER_DEFAULTS[provider] || PROVIDER_DEFAULTS.openai;
-
-  customFields.hidden = provider !== "custom";
-  if (provider !== "custom") {
-    endpointInput.value = defaults.endpoint;
-  }
-}
-
 function validateAiSettings(settings) {
-  if (settings.enabled && !settings.apiKey) {
+  if (!settings.apiKey) {
     return TEXT.aiKeyRequired;
-  }
-  if (settings.enabled && settings.provider === "custom" && !settings.endpoint) {
-    return "請先輸入 Custom API Endpoint。";
   }
   return "";
 }
 
 async function loadAiSettings() {
   const settings = await getAiSettings();
-  document.getElementById("ai-enabled").checked = settings.enabled;
   document.getElementById("ai-provider").value = settings.provider;
   document.getElementById("ai-api-key").value = settings.apiKey;
-  document.getElementById("ai-endpoint").value = settings.endpoint;
-  applyProviderDefaults(settings.provider);
 }
 
 async function handleSaveAiSettings() {
@@ -819,9 +799,6 @@ function initAiControls() {
   const providerSelect = document.getElementById("ai-provider");
   if (!providerSelect) return;
 
-  providerSelect.addEventListener("change", () => {
-    applyProviderDefaults(providerSelect.value);
-  });
   document.getElementById("ai-save").addEventListener("click", handleSaveAiSettings);
   document.getElementById("ai-generate").addEventListener("click", handleGenerateAiAnalysis);
   loadAiSettings().catch((error) => {
