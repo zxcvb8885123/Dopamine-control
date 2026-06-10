@@ -18,7 +18,7 @@ let dailyUsage      = {};   // { 'youtube.com': 450 }
 
 document.addEventListener('DOMContentLoaded', async () => {
   const data = await chrome.storage.local.get([
-    'enabled', 'workStart', 'workEnd',
+    'enabled', 'declutterEnabled', 'workStart', 'workEnd',
     'blockedDomains', 'dailyLimits', 'cooldownDomains', 'cooldownSeconds',
     'dailyUsage'
   ]);
@@ -28,6 +28,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   enabledEl.checked = data.enabled ?? true;
   updateEnabledLabel(enabledEl.checked);
   enabledEl.addEventListener('change', () => updateEnabledLabel(enabledEl.checked));
+
+  // --- 去介面刺激化開關連動邏輯 ---
+  const declutterToggle = document.getElementById('declutter-toggle');
+  if (declutterToggle) {
+    // 讀取儲存的狀態，預設開啟
+    declutterToggle.checked = data.declutterEnabled ?? true; 
+  }
+  
+  if (enabledEl && declutterToggle) {
+    enabledEl.addEventListener('change', () => {
+      // 核心修改：兩者狀態強制同步
+      declutterToggle.checked = enabledEl.checked;
+    });
+  }
+  // -----------------
 
   document.getElementById('workStart').value = data.workStart ?? '09:00';
   document.getElementById('workEnd').value   = data.workEnd   ?? '18:00';
@@ -261,9 +276,13 @@ async function saveSettings() {
   }
 
   const cooldownSeconds = parseInt(document.getElementById('cooldownSeconds').value, 10);
-
+  
+  // 去刺激化開關狀態 (增加這一行)
+  const declutterToggle = document.getElementById('declutter-toggle');
+  
   await chrome.storage.local.set({
     enabled:         document.getElementById('enabled').checked,
+    declutterEnabled: declutterToggle ? declutterToggle.checked : true, // 存入開關狀態
     workStart,
     workEnd,
     blockedDomains:  [...blockedDomains],

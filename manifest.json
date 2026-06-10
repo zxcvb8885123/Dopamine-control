@@ -16,7 +16,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content/cooldown.js", "content/content.js"],
+      "js": ["content/declutter.js","content/cooldown.js", "content/content.js"],
       "run_at": "document_end"
     }
   ],
