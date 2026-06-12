@@ -269,7 +269,7 @@ async function saveSettings() {
 
   const rawCooldownSeconds = parseInt(document.getElementById('cooldownSeconds').value, 10);
   const cooldownSeconds = Number.isFinite(rawCooldownSeconds)
-    ? Math.min(300, Math.max(5, rawCooldownSeconds))
+    ? Math.min(300, Math.max(1, rawCooldownSeconds))
     : 20;
   
   // 去刺激化開關狀態 (增加這一行)
