@@ -43,6 +43,12 @@
 
     startUsageTracking(settings);
 
+    // --- 去借面刺激化declutter 模組整合 ---
+    if (window.__ddDeclutter) {
+      // 確保將 settings 傳進去，讓 declutter.js 內的邏輯能根據設定執行
+      window.__ddDeclutter.run(settings);
+    }
+
     // Other modules can be enabled here when integrated.
     // if (window.__ddDeclutter) window.__ddDeclutter.run(settings);
     // if (window.__ddTimer)     window.__ddTimer.run(settings);
