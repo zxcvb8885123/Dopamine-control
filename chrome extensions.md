@@ -49,8 +49,7 @@ dopamine-detox/
 │   └── usage-analytics/
 │       ├── storage.js    讀寫 usageAnalytics storage key
 │       ├── summary.js    統計邏輯（今日 / 近 N 天）
-│       ├── ai.js         AI API 設定與呼叫
-│       └── timer.js      計時顯示（供 report 頁使用）
+│       └── ai.js         AI API 設定與呼叫
 ├── popup/
 │   ├── popup.html / popup.js     設定介面
 │   └── report.html / report.js  使用量報表頁

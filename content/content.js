@@ -10,6 +10,8 @@
 (function () {
   'use strict';
 
+  const TIMER_ELEMENT_ID = 'dd-usage-timer';
+
   function isContextValid() {
     try {
       return !!chrome.runtime?.id;
@@ -34,6 +36,9 @@
   function applySettings(settings) {
     if (!settings?.enabled) {
       window.__ddUsageTracker?.stop?.();
+      window.__ddCooldown?.stop?.();
+      window.__ddDeclutter?.stop?.();
+      document.getElementById(TIMER_ELEMENT_ID)?.remove();
       return;
     }
 
@@ -43,15 +48,10 @@
 
     startUsageTracking(settings);
 
-    // --- 去借面刺激化declutter 模組整合 ---
+    // 去介面刺激化模組
     if (window.__ddDeclutter) {
-      // 確保將 settings 傳進去，讓 declutter.js 內的邏輯能根據設定執行
       window.__ddDeclutter.run(settings);
     }
-
-    // Other modules can be enabled here when integrated.
-    // if (window.__ddDeclutter) window.__ddDeclutter.run(settings);
-    // if (window.__ddTimer)     window.__ddTimer.run(settings);
   }
 
   function startUsageTracking(settings) {
@@ -75,10 +75,53 @@
     let blocked = false;
     let timer = null;
     let pendingSeconds = 0;
+    let elapsedSeconds = 0;
     let lastInteraction = Date.now();
     const onInteraction = () => { lastInteraction = Date.now(); };
     const INTERACTION_EVENTS = ['mousemove', 'keydown', 'scroll', 'click', 'touchstart'];
     INTERACTION_EVENTS.forEach(e => document.addEventListener(e, onInteraction, { passive: true }));
+
+    const formatDuration = (seconds) => {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const remainingSeconds = seconds % 60;
+      return hours > 0
+        ? [hours, minutes, remainingSeconds].map(value => String(value).padStart(2, '0')).join(':')
+        : [minutes, remainingSeconds].map(value => String(value).padStart(2, '0')).join(':');
+    };
+
+    const ensureTimerElement = () => {
+      let element = document.getElementById(TIMER_ELEMENT_ID);
+      if (element) return element;
+
+      element = document.createElement('div');
+      element.id = TIMER_ELEMENT_ID;
+      element.style.cssText = [
+        'position:fixed',
+        'right:16px',
+        'bottom:16px',
+        'z-index:2147483647',
+        'padding:7px 11px',
+        'border:1px solid rgba(255,255,255,.16)',
+        'border-radius:999px',
+        'background:rgba(20,20,24,.78)',
+        'backdrop-filter:blur(8px)',
+        '-webkit-backdrop-filter:blur(8px)',
+        'box-shadow:0 4px 16px rgba(0,0,0,.24)',
+        'color:#fff',
+        'font:600 12px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace',
+        'letter-spacing:.02em',
+        'pointer-events:none'
+      ].join(';');
+      (document.body || document.documentElement).appendChild(element);
+      return element;
+    };
+
+    const updateTimerDisplay = () => {
+      ensureTimerElement().textContent = `${hostname}  ${formatDuration(elapsedSeconds)}`;
+    };
+
+    updateTimerDisplay();
 
     const persistUsageAnalytics = (domain, seconds) => {
       if (!seconds || !isContextValid()) return;
@@ -156,6 +199,7 @@
       window.removeEventListener('beforeunload', flushUsage);
       INTERACTION_EVENTS.forEach(e => document.removeEventListener(e, onInteraction));
       if (flush) flushUsage();
+      document.getElementById(TIMER_ELEMENT_ID)?.remove();
       if (window.__ddUsageTracker?.stop === stopTracking) {
         delete window.__ddUsageTracker;
       }
@@ -166,7 +210,9 @@
     timer = setInterval(() => {
       if (!isContextValid()) { stopTracking(false); return; }
       if (!isActive()) return;
+      elapsedSeconds++;
       pendingSeconds++;
+      updateTimerDisplay();
       if (pendingSeconds >= REPORT_INTERVAL) {
         flushUsage();
       }

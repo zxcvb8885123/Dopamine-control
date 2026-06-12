@@ -54,6 +54,31 @@ const USAGE_ANALYTICS_KEY = 'usageAnalytics';
 // read the same snapshot and overwrite each other's usage increments.
 let usageAnalyticsWriteQueue = Promise.resolve();
 
+async function getContentSettings() {
+  return chrome.storage.local.get([
+    'enabled',
+    'declutterEnabled',
+    'dailyLimits',
+    'cooldownDomains',
+    'cooldownSeconds',
+    'dailyUsage'
+  ]);
+}
+
+async function broadcastContentSettings() {
+  const settings = await getContentSettings();
+  const tabs = await chrome.tabs.query({});
+
+  await Promise.allSettled(
+    tabs
+      .filter(tab => Number.isInteger(tab.id))
+      .map(tab => chrome.tabs.sendMessage(tab.id, {
+        type: 'APPLY_SETTINGS',
+        settings
+      }))
+  );
+}
+
 function parseHHMM(t) {
   const [h, m] = (t || '00:00').split(':').map(Number);
   return h * 60 + (m || 0);
@@ -249,16 +274,20 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   if (msg.type === 'GET_SETTINGS') {
-    chrome.storage.local.get([
-      'enabled', 'dailyLimits', 'cooldownDomains', 'cooldownSeconds', 'dailyUsage'
-    ]).then(sendResponse);
+    getContentSettings().then(sendResponse);
     return true;
   }
 
   if (msg.type === 'SETTINGS_UPDATED') {
-    updateWorkHoursBlock();
-    updateDailyLimitRules();
-    return false;
+    updateWorkHoursBlock()
+      .then(updateDailyLimitRules)
+      .then(broadcastContentSettings)
+      .then(() => sendResponse({ ok: true }))
+      .catch((error) => {
+        console.error('[DD] settings update failed:', error);
+        sendResponse({ ok: false });
+      });
+    return true;
   }
 
   if (msg.type === 'OPEN_POPUP') {

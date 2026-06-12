@@ -2,9 +2,11 @@ import { getUsageStore, toDateKey } from "./storage.js";
 
 function getDateKeys(days = 7, endTimestamp = Date.now()) {
   const keys = [];
+  const endDate = new Date(endTimestamp);
   for (let i = days - 1; i >= 0; i -= 1) {
-    const ts = endTimestamp - i * 24 * 60 * 60 * 1000;
-    keys.push(toDateKey(ts));
+    const date = new Date(endDate);
+    date.setDate(endDate.getDate() - i);
+    keys.push(toDateKey(date.getTime()));
   }
   return keys;
 }
@@ -17,10 +19,13 @@ export async function getTodayUsage() {
   const store = await getUsageStore();
   const todayKey = toDateKey();
   const dayRecord = store.days[todayKey] || { totalSeconds: 0, domains: {} };
+  const totalSeconds = Math.max(0, Number(dayRecord.totalSeconds) || 0);
   return {
     date: todayKey,
-    totalSeconds: dayRecord.totalSeconds || 0,
-    domains: sortDomainEntries(Object.entries(dayRecord.domains || {})).map(
+    totalSeconds,
+    domains: sortDomainEntries(Object.entries(dayRecord.domains || {}).map(
+      ([domain, seconds]) => [domain, Math.max(0, Number(seconds) || 0)]
+    )).map(
       ([domain, seconds]) => ({ domain, seconds })
     ),
   };
@@ -34,13 +39,15 @@ export async function getLastNDaysUsage(days = 7) {
 
   dateKeys.forEach((dateKey) => {
     const dayRecord = store.days[dateKey] || { totalSeconds: 0, domains: {} };
+    const dayTotalSeconds = Math.max(0, Number(dayRecord.totalSeconds) || 0);
     totals.push({
       date: dateKey,
-      totalSeconds: dayRecord.totalSeconds || 0,
+      totalSeconds: dayTotalSeconds,
     });
 
     Object.entries(dayRecord.domains || {}).forEach(([domain, seconds]) => {
-      domainTotals[domain] = (domainTotals[domain] || 0) + seconds;
+      domainTotals[domain] =
+        (domainTotals[domain] || 0) + Math.max(0, Number(seconds) || 0);
     });
   });
 
