@@ -1,78 +1,83 @@
 (function () {
-    'use strict';
+  'use strict';
 
-    /**
-     * 工具函式：注入 CSS
-     */
-    function injectStyle(id, css) {
-        if (!document.getElementById(id)) {
-            const style = document.createElement('style');
-            style.id = id;
-            style.textContent = css;
-            document.head.appendChild(style);
-        }
+  const STYLE_IDS = ['dd-yt', 'dd-ig'];
+  const linkedinHiddenElements = new Map();
+  let linkedinObserver = null;
+
+  function injectStyle(id, css) {
+    let style = document.getElementById(id);
+    if (!style) {
+      style = document.createElement('style');
+      style.id = id;
+      (document.head || document.documentElement).appendChild(style);
     }
+    style.textContent = css;
+  }
 
-    /**
-     * 工具函式：移除 CSS
-     */
-    function removeStyle(id) {
-        const el = document.getElementById(id);
-        if (el) el.remove();
-    }
-
-    const host = window.location.hostname;
-
-    // 從 Storage 讀取開關狀態，決定是否執行封鎖
-    chrome.storage.local.get('declutterEnabled', (data) => {
-        const isEnabled = data.declutterEnabled ?? true; // 預設為開啟
-
-        // 1. YouTube：穩定保護 (完全不影響搜尋結果與影片播放功能)
-        if (host.includes('youtube.com')) {
-            const styleId = 'dd-yt';
-            if (isEnabled) {
-                injectStyle(styleId, `
-                    /* 隱藏推薦影片、留言、Shorts 與首頁瀑布流，保留搜尋與播放器 */
-                    #related, #comments, ytd-reel-shelf-renderer, #shorts-container, 
-                    ytd-browse[page-subtype="home"] ytd-rich-grid-renderer { 
-                        display: none !important; 
-                    }
-                `);
-            } else {
-                removeStyle(styleId);
-            }
-        }
-
-        // 2. Instagram：動態保護
-        else if (host.includes('instagram.com')) {
-            const styleId = 'dd-ig';
-            if (isEnabled) {
-                injectStyle(styleId, `
-                    div[role="presentation"], article, aside[role="complementary"] { 
-                        display: none !important; 
-                    }
-                `);
-            } else {
-                removeStyle(styleId);
-            }
-        }
-
-        // 3. LinkedIn：文字特徵狙擊 (保持監控，不影響個人頁面導航)
-        else if (host.includes('linkedin.com')) {
-            function hideDistractionsByText() {
-                const allElements = document.querySelectorAll('div, aside, section');
-                allElements.forEach(el => {
-                    const text = el.innerText || "";
-                    if (text.includes('熱門新聞') || text.includes('本日解謎遊戲') || text.includes('推廣')) {
-                        el.style.display = 'none';
-                    }
-                });
-            }
-            const observer = new MutationObserver(hideDistractionsByText);
-            observer.observe(document.body, { childList: true, subtree: true });
-            hideDistractionsByText();
-        }
+  function restoreLinkedinElements() {
+    linkedinHiddenElements.forEach((display, element) => {
+      if (element.isConnected) element.style.display = display;
     });
+    linkedinHiddenElements.clear();
+  }
 
-    console.log("[DD] 引擎已啟動：偵測到狀態為 " + (window.isEnabled ? "開啟" : "關閉"));
+  function stopDeclutter() {
+    STYLE_IDS.forEach(id => document.getElementById(id)?.remove());
+    linkedinObserver?.disconnect();
+    linkedinObserver = null;
+    restoreLinkedinElements();
+  }
+
+  function hideLinkedinDistractions() {
+    document.querySelectorAll('span, h2, h3').forEach((element) => {
+      const text = element.innerText || '';
+      const shouldHide = ['熱門新聞', '本日解謎遊戲', '推廣']
+        .some(keyword => text.includes(keyword));
+      if (!shouldHide) return;
+
+      const container = element.closest('aside, section, li, .artdeco-card');
+      if (container && !linkedinHiddenElements.has(container)) {
+        linkedinHiddenElements.set(container, container.style.display);
+        container.style.display = 'none';
+      }
+    });
+  }
+
+  function runDeclutter(settings = {}) {
+    stopDeclutter();
+    if (!settings.enabled || settings.declutterEnabled === false) return;
+
+    const host = location.hostname.replace(/^www\./, '');
+
+    if (host === 'youtube.com' || host.endsWith('.youtube.com')) {
+      injectStyle('dd-yt', `
+        #related, #comments, ytd-reel-shelf-renderer, #shorts-container,
+        ytd-browse[page-subtype="home"] ytd-rich-grid-renderer {
+          display: none !important;
+        }
+      `);
+      return;
+    }
+
+    if (host === 'instagram.com' || host.endsWith('.instagram.com')) {
+      injectStyle('dd-ig', `
+        div[role="presentation"], article, aside[role="complementary"] {
+          display: none !important;
+        }
+      `);
+      return;
+    }
+
+    if (host === 'linkedin.com' || host.endsWith('.linkedin.com')) {
+      hideLinkedinDistractions();
+      linkedinObserver = new MutationObserver(hideLinkedinDistractions);
+      linkedinObserver.observe(document.body, { childList: true, subtree: true });
+    }
+  }
+
+  window.__ddDeclutter = {
+    run: runDeclutter,
+    stop: stopDeclutter
+  };
 })();

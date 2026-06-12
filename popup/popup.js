@@ -36,14 +36,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     declutterToggle.checked = data.declutterEnabled ?? true; 
   }
   
-  if (enabledEl && declutterToggle) {
-    enabledEl.addEventListener('change', () => {
-      // 核心修改：兩者狀態強制同步
-      declutterToggle.checked = enabledEl.checked;
-    });
-  }
-  // -----------------
-
   document.getElementById('workStart').value = data.workStart ?? '09:00';
   document.getElementById('workEnd').value   = data.workEnd   ?? '18:00';
   document.getElementById('cooldownSeconds').value = data.cooldownSeconds ?? 20;
@@ -275,7 +267,10 @@ async function saveSettings() {
     return;
   }
 
-  const cooldownSeconds = parseInt(document.getElementById('cooldownSeconds').value, 10);
+  const rawCooldownSeconds = parseInt(document.getElementById('cooldownSeconds').value, 10);
+  const cooldownSeconds = Number.isFinite(rawCooldownSeconds)
+    ? Math.min(300, Math.max(5, rawCooldownSeconds))
+    : 20;
   
   // 去刺激化開關狀態 (增加這一行)
   const declutterToggle = document.getElementById('declutter-toggle');
@@ -288,7 +283,7 @@ async function saveSettings() {
     blockedDomains:  [...blockedDomains],
     dailyLimits:     { ...dailyLimits },
     cooldownDomains: [...cooldownDomains],
-    cooldownSeconds: isNaN(cooldownSeconds) ? 20 : cooldownSeconds
+    cooldownSeconds
   });
 
   chrome.runtime.sendMessage({ type: 'SETTINGS_UPDATED' });

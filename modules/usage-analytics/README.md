@@ -97,10 +97,12 @@ Usage Analytics 由三層組成：
 ## File Structure
 ```text
 modules/usage-analytics/
-├── timer.js        # 計時與回報
 ├── storage.js      # 資料儲存
 ├── summary.js      # 統計邏輯
 ├── ai.js           # AI 分析與 API 設定
+
+content/
+├── content.js      # 前景計時、畫面顯示與使用量回報
 
 popup/
 ├── report.html     # 報表 UI

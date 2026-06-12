@@ -14,8 +14,25 @@
   'use strict';
 
   const STORAGE_KEY = '__dd_cooldown_shown__';
+  let activeInterval = null;
+  let activeTimeout = null;
+
+  function stopCooldown() {
+    if (activeInterval) {
+      clearInterval(activeInterval);
+      activeInterval = null;
+    }
+    if (activeTimeout) {
+      clearTimeout(activeTimeout);
+      activeTimeout = null;
+    }
+    document.getElementById('__dd-overlay')?.remove();
+    document.getElementById('__dd-style')?.remove();
+  }
 
   function createOverlay(totalSeconds, onComplete) {
+    stopCooldown();
+
     const style = document.createElement('style');
     style.id = '__dd-style';
     style.textContent = `
@@ -154,18 +171,20 @@
 
     let remaining = totalSeconds;
 
-    const tick = setInterval(() => {
+    activeInterval = setInterval(() => {
       remaining--;
       if (timeEl) timeEl.textContent = remaining;
       if (barEl)  barEl.style.width = ((remaining / totalSeconds) * 100) + '%';
 
       if (remaining <= 0) {
-        clearInterval(tick);
+        clearInterval(activeInterval);
+        activeInterval = null;
         overlay.style.transition = 'opacity 0.4s';
         overlay.style.opacity = '0';
-        setTimeout(() => {
+        activeTimeout = setTimeout(() => {
           overlay.remove();
           style.remove();
+          activeTimeout = null;
           onComplete?.();
         }, 400);
       }
@@ -180,17 +199,24 @@
         cooldownSeconds = 20
       } = settings;
 
-      if (!enabled) return;
+      if (!enabled) {
+        stopCooldown();
+        return;
+      }
 
       const hostname = location.hostname.replace(/^www\./, '');
       const matched = cooldownDomains.find(d => hostname === d || hostname.endsWith('.' + d));
-      if (!matched) return;
+      if (!matched) {
+        stopCooldown();
+        return;
+      }
 
       const sessionKey = STORAGE_KEY + matched;
       if (sessionStorage.getItem(sessionKey)) return;
       sessionStorage.setItem(sessionKey, '1');
 
       createOverlay(cooldownSeconds, () => {});
-    }
+    },
+    stop: stopCooldown
   };
 })();
