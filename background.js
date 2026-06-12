@@ -48,6 +48,12 @@ const DYNAMIC_RULE_ID_BASE       = 1000; // 1000–1999：工作時段封鎖
 const DAILY_LIMIT_RULE_ID_BASE   = 2000; // 2000–2999：每日限時超額封鎖
 
 // HH:MM → 午夜起算的分鐘數
+const USAGE_ANALYTICS_KEY = 'usageAnalytics';
+
+// Module 3 analytics reports share one write queue so concurrent tabs cannot
+// read the same snapshot and overwrite each other's usage increments.
+let usageAnalyticsWriteQueue = Promise.resolve();
+
 function parseHHMM(t) {
   const [h, m] = (t || '00:00').split(':').map(Number);
   return h * 60 + (m || 0);
@@ -227,6 +233,16 @@ async function updateDailyLimitRules() {
 // ── 每日限時：接收 content script 回報 ───────────────────────
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === 'REPORT_ANALYTICS_USAGE') {
+    enqueueUsageAnalyticsReport(msg)
+      .then(() => sendResponse({ ok: true }))
+      .catch((error) => {
+        console.error('[DD] usage analytics write failed:', error);
+        sendResponse({ ok: false });
+      });
+    return true;
+  }
+
   if (msg.type === 'REPORT_USAGE') {
     handleUsageReport(msg, sender).then(sendResponse);
     return true; // 非同步回應
@@ -250,6 +266,60 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return false;
   }
 });
+
+function toUsageDateKey(timestamp = Date.now()) {
+  const date = new Date(timestamp);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function enqueueUsageAnalyticsReport(report) {
+  const writeTask = usageAnalyticsWriteQueue.then(() => persistUsageAnalyticsReport(report));
+  usageAnalyticsWriteQueue = writeTask.catch(() => {});
+  return writeTask;
+}
+
+async function persistUsageAnalyticsReport({ domain, seconds, timestamp }) {
+  const safeDomain = String(domain || '').trim().toLowerCase().replace(/^www\./, '');
+  const safeSeconds = Math.max(0, Math.floor(Number(seconds) || 0));
+  const safeTimestamp = Number.isFinite(Number(timestamp)) ? Number(timestamp) : Date.now();
+  if (!safeDomain || safeSeconds <= 0) return;
+
+  const result = await chrome.storage.local.get([USAGE_ANALYTICS_KEY]);
+  const current = result[USAGE_ANALYTICS_KEY];
+  const store =
+    current && typeof current === 'object' && current.days && typeof current.days === 'object'
+      ? {
+          version: Number(current.version) || 1,
+          updatedAt: Number(current.updatedAt) || Date.now(),
+          days: { ...current.days }
+        }
+      : { version: 1, updatedAt: Date.now(), days: {} };
+
+  const dateKey = toUsageDateKey(safeTimestamp);
+  const existingDay = store.days[dateKey];
+  const dayRecord =
+    existingDay && typeof existingDay === 'object'
+      ? {
+          totalSeconds: Number(existingDay.totalSeconds) || 0,
+          domains: { ...(existingDay.domains || {}) }
+        }
+      : { totalSeconds: 0, domains: {} };
+
+  dayRecord.totalSeconds += safeSeconds;
+  dayRecord.domains[safeDomain] = (Number(dayRecord.domains[safeDomain]) || 0) + safeSeconds;
+  store.days[dateKey] = dayRecord;
+  store.updatedAt = Date.now();
+
+  const cutoff = toUsageDateKey(Date.now() - 30 * 86400 * 1000);
+  Object.keys(store.days).forEach((key) => {
+    if (key < cutoff) delete store.days[key];
+  });
+
+  await chrome.storage.local.set({ [USAGE_ANALYTICS_KEY]: store });
+}
 
 async function handleUsageReport({ domain, seconds }, sender) {
   if (!sender?.tab?.id) return { ok: false };
@@ -310,5 +380,9 @@ async function resetDailyUsage() {
 }
 
 function getTodayString() {
-  return new Date().toISOString().slice(0, 10); // 'YYYY-MM-DD'
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`; // 本地時區，午夜正確重置
 }

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Dopamine Detox",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "減少數位刺激，奪回注意力掌控權",
   "permissions": [
     "storage",
@@ -16,12 +16,8 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": [
-        "content/declutter.js", 
-        "content/cooldown.js", 
-        "content/content.js"
-      ],
-      "run_at": "document_start"
+      "js": ["content/declutter.js","content/cooldown.js", "content/content.js"],
+      "run_at": "document_end"
     }
   ],
   "declarative_net_request": {

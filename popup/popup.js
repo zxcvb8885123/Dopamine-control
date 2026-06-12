@@ -18,19 +18,31 @@ let dailyUsage      = {};   // { 'youtube.com': 450 }
 
 document.addEventListener('DOMContentLoaded', async () => {
   const data = await chrome.storage.local.get([
-    'enabled', 'workStart', 'workEnd',
+    'enabled', 'declutterEnabled', 'workStart', 'workEnd',
     'blockedDomains', 'dailyLimits', 'cooldownDomains', 'cooldownSeconds',
     'dailyUsage'
   ]);
-  // 載入介面去刺激化設定
-  const declutterToggle = document.getElementById('declutter-toggle');
-  declutterToggle.checked = data.declutterEnabled ?? false;
 
   // 基本設定
   const enabledEl = document.getElementById('enabled');
   enabledEl.checked = data.enabled ?? true;
   updateEnabledLabel(enabledEl.checked);
   enabledEl.addEventListener('change', () => updateEnabledLabel(enabledEl.checked));
+
+  // --- 去介面刺激化開關連動邏輯 ---
+  const declutterToggle = document.getElementById('declutter-toggle');
+  if (declutterToggle) {
+    // 讀取儲存的狀態，預設開啟
+    declutterToggle.checked = data.declutterEnabled ?? true; 
+  }
+  
+  if (enabledEl && declutterToggle) {
+    enabledEl.addEventListener('change', () => {
+      // 核心修改：兩者狀態強制同步
+      declutterToggle.checked = enabledEl.checked;
+    });
+  }
+  // -----------------
 
   document.getElementById('workStart').value = data.workStart ?? '09:00';
   document.getElementById('workEnd').value   = data.workEnd   ?? '18:00';
@@ -68,6 +80,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 儲存
   document.getElementById('save').addEventListener('click', saveSettings);
+  const openReportBtn = document.getElementById('open-report');
+  if (openReportBtn) {
+    openReportBtn.addEventListener('click', openReportPage);
+  }
+
 });
 
 // ── 輔助：正規化域名 ─────────────────────────────────────────
@@ -135,7 +152,7 @@ function addDomain(inputId, arr, renderFn) {
 // ── 每日限時清單 ──────────────────────────────────────────────
 
 function fmtTime(sec) {
-  if (sec < 60) return `${sec} 秒`;
+  if (sec < 60) return '< 1 分鐘';
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
   if (h > 0) return `${h} 時 ${m} 分`;
@@ -148,7 +165,7 @@ function renderLimitList() {
 
   const entries = Object.entries(dailyLimits);
   if (entries.length === 0) {
-    container.innerHTML = '<div style="font-size:12px;color:#444;padding:4px 0">尚未設定任何限時</div>';
+    container.innerHTML = '<div style="font-size:12px;color:var(--text-dim);padding:4px 0">尚未設定任何限時</div>';
     return;
   }
 
@@ -242,6 +259,11 @@ function flashInput(input) {
   input.focus();
 }
 
+function openReportPage() {
+  const reportUrl = chrome.runtime.getURL('popup/report.html');
+  chrome.tabs.create({ url: reportUrl });
+}
+
 // ── 儲存 ──────────────────────────────────────────────────────
 
 async function saveSettings() {
@@ -254,16 +276,19 @@ async function saveSettings() {
   }
 
   const cooldownSeconds = parseInt(document.getElementById('cooldownSeconds').value, 10);
-
+  
+  // 去刺激化開關狀態 (增加這一行)
+  const declutterToggle = document.getElementById('declutter-toggle');
+  
   await chrome.storage.local.set({
     enabled:         document.getElementById('enabled').checked,
+    declutterEnabled: declutterToggle ? declutterToggle.checked : true, // 存入開關狀態
     workStart,
     workEnd,
     blockedDomains:  [...blockedDomains],
     dailyLimits:     { ...dailyLimits },
     cooldownDomains: [...cooldownDomains],
-    cooldownSeconds: isNaN(cooldownSeconds) ? 20 : cooldownSeconds,
-    declutterEnabled: document.getElementById('declutter-toggle').checked
+    cooldownSeconds: isNaN(cooldownSeconds) ? 20 : cooldownSeconds
   });
 
   chrome.runtime.sendMessage({ type: 'SETTINGS_UPDATED' });
@@ -277,6 +302,3 @@ function showStatus(msg, color) {
   setTimeout(() => { el.textContent = ''; }, 2000);
 }
 
-document.getElementById('btn-kofi').addEventListener('click', () => {
-  chrome.tabs.create({ url: 'https://ko-fi.com/K3K21Y3P17' });
-});

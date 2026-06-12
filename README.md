@@ -32,7 +32,7 @@
     * **實作：** `background.js` 透過 `chrome.alarms` 每分鐘執行 `updateWorkHoursBlock()`，動態更新 `declarativeNetRequest` 規則，將請求導向 `blocked.html?reason=workhours`。
 * **每日限時 (Daily Limit)**
     * **說明：** 為特定平台設定每日累計使用上限。使用者可在 Popup 自訂任意網域與分鐘數。
-    * **實作：** Content script 頁面開啟時立即查詢是否已超額（`seconds=0`），並每 30 秒送出 `REPORT_USAGE`；`background.js` 累積秒數超額後將分頁導向 `blocked.html?reason=limit`，並於午夜自動重置。
+    * **實作：** Content script 頁面開啟時立即查詢是否已超額（`seconds=0`），並每 5 秒送出 `REPORT_USAGE`；`background.js` 累積秒數超額後將分頁導向 `blocked.html?reason=limit`，並於本地午夜自動重置。
 * **強制冷卻 (Forced Cooldown)**
     * **說明：** 當使用者進入 `cooldownDomains` 清單中的網站時，系統強制顯示 N 秒（預設 20 秒）的全螢幕呼吸練習引導。
     * **實作：** `content/cooldown.js` 注入覆蓋層（所有 CSS 以 `__dd-` 前綴隔離）；以 `sessionStorage` 確保每個 session 每個域名只觸發一次；倒數結束後覆蓋層自動消失。
@@ -62,41 +62,25 @@
 ---
 
 ## 模組三：行為追蹤與數據化 (Usage Tracking)
-**狀態：待開發**
+**狀態：已完成**
 
 **核心目標：** 透過數據可視化，讓使用者察覺成癮行為並建立自覺。
 
-* **實時計時器 (Real-time Timer)**
-    * **說明：** 在網頁角落顯示微小的浮動計時器，即時呈現當前網頁已耗費的時間。
-    * **效益：** 打破「時間流逝錯覺」，讓使用者對耗費的時間產生即時痛感。
-* **成癮報告 (Addiction Report)**
-    * **說明：** 每週彙整各類網站的使用時數與頻率。
-    * **效益：** 分析哪些平台分泌了過多不必要的多巴胺，作為調整下週封鎖策略的依據。
+* **使用量追蹤**
+    * **說明：** `content.js` 追蹤所有網站，每秒計算、每 5 秒批次寫入 `usageAnalytics`；頁面可見 + 視窗聚焦 + 2 分鐘內有操作（或影片播放中）才計時，閒置自動暫停。
+    * **效益：** 精準記錄真實使用時間，避免背景分頁或放著不動誤算。
+* **數據報表 (Usage Report)**
+    * **說明：** Popup 內建「查看數據報表」，點擊後在 popup 內直接切換至報表 view（iframe 內嵌，不另開分頁），顯示今日 / 近 7 天 / 近 30 天各網站使用時間分布與進度條。
+    * **效益：** 讓使用者清楚看見自己的成癮模式。
+* **AI 使用行為分析**
+    * **說明：** 支援 OpenAI、Gemini 或 Custom Endpoint；使用者填入 API Key 後，報表頁可一鍵產生摘要、分心風險分級、異常提醒與明日改善建議。
+    * **效益：** 將數據轉化為可執行的行動建議。
 
 **技術接口：**
-- 實作於 `content/timer.js`，對外暴露 `window.__ddTimer.run(settings)`
-- 每 30 秒送出 `{ type: 'REPORT_USAGE', domain, seconds: 30 }` 給 `background.js`，同時驅動模組二的每日限時計數器
-- 週報告頁面實作於 `popup/report.html` / `popup/report.js`
+- 計時邏輯內建於 `content/content.js`（`startUsageTracking()`），寫入 `usageAnalytics` storage key
+- 統計與 AI 邏輯位於 `modules/usage-analytics/`（storage.js、summary.js、ai.js）
+- 報表頁實作於 `popup/report.html` / `popup/report.js`
 
 ---
 
-## 其他功能
 
-### Ko-fi 贊助 Widget
-- **Popup** 底部：☕ 請我喝杯咖啡 按鈕，點擊開新分頁至 Ko-fi
-- **封鎖頁** 右下角：Ko-fi floating chat widget（`vendor/kofi-overlay-widget.js` 本地副本）
-- Ko-fi 頁面：https://ko-fi.com/K3K21Y3P17
-
----
-
-## 開發順序建議
-
-```
-Phase 1  介面去刺激化     content/declutter.js    — 純 CSS+DOM，最快見效        ← 待開發
-Phase 2  浮動計時器       content/timer.js        — Content Script 基礎          ← 待開發
-Phase 3  每日限時封鎖     background.js           — 已完成
-Phase 4  工作時段排程     background.js           — 已完成
-Phase 5  強制冷卻畫面     content/cooldown.js     — 已完成
-Phase 6  Popup 設定介面   popup/                  — 已完成（動態域名管理）
-Phase 7  週報告頁面       popup/report.html/js    — 待開發
-```

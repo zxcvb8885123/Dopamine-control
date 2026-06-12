@@ -2,54 +2,70 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dopamine Detox</title>
   <style>
+    :root {
+      color-scheme: dark;
+      --bg:         #0f1116;
+      --bg-soft:    #131722;
+      --surface:    #171b25;
+      --surface-2:  #1a2030;
+      --border:     #2b3245;
+      --border-soft:#1e2438;
+      --text:       #e8edf9;
+      --text-muted: #96a2bd;
+      --text-dim:   #5a6580;
+      --accent:     #3a8cff;
+      --accent-soft:#84b6ff;
+      --accent-dim: rgba(58,140,255,0.16);
+      --danger:     #e57373;
+      --shadow:     0 18px 40px rgba(0,0,0,0.42);
+    }
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       width: 340px;
-      max-height: 580px;
+      height: 580px;
       overflow-y: auto;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #111;
-      color: #e0e0e0;
+      background:
+        radial-gradient(80% 50% at 0% 0%, #1a2540 0%, transparent 55%),
+        radial-gradient(60% 40% at 100% 100%, #12213e 0%, transparent 50%),
+        var(--bg);
+      color: var(--text);
       font-size: 13px;
     }
 
-    /* 捲軸 */
     body::-webkit-scrollbar { width: 4px; }
     body::-webkit-scrollbar-track { background: transparent; }
-    body::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+    body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
     .header {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      background: #111;
       padding: 16px 20px 12px;
-      border-bottom: 1px solid #222;
+      border-bottom: 1px solid var(--border-soft);
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
 
-    .header h3 { font-size: 14px; color: #fff; font-weight: 600; }
+    .header h3 { font-size: 14px; color: var(--text); font-weight: 700; display: flex; align-items: center; }
 
     .toggle-wrap {
       display: flex;
       align-items: center;
       gap: 8px;
       font-size: 12px;
-      color: #888;
+      color: var(--text-muted);
     }
 
-    /* iOS-style toggle */
     .toggle { position: relative; width: 36px; height: 20px; }
     .toggle input { opacity: 0; width: 0; height: 0; }
     .toggle-slider {
       position: absolute; inset: 0;
-      background: #333; border-radius: 20px; cursor: pointer;
-      transition: background 0.2s;
+      background: var(--border); border-radius: 20px; cursor: pointer;
+      transition: background 150ms;
     }
     .toggle-slider::before {
       content: '';
@@ -57,20 +73,19 @@
       width: 14px; height: 14px;
       left: 3px; top: 3px;
       background: #fff; border-radius: 50%;
-      transition: transform 0.2s;
+      transition: transform 150ms;
     }
-    .toggle input:checked + .toggle-slider { background: #3a8cff; }
+    .toggle input:checked + .toggle-slider { background: var(--accent); }
     .toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
 
     .content { padding: 0 20px 20px; }
 
-    /* 區塊 */
     .section { margin-top: 20px; }
 
     .section-title {
       font-size: 11px;
       font-weight: 600;
-      color: #666;
+      color: var(--text-dim);
       text-transform: uppercase;
       letter-spacing: 0.8px;
       margin-bottom: 10px;
@@ -78,7 +93,7 @@
 
     .field-label {
       font-size: 12px;
-      color: #aaa;
+      color: var(--text-muted);
       margin: 10px 0 5px;
     }
 
@@ -90,28 +105,30 @@
     input[type="time"] {
       width: 100%;
       padding: 7px 10px;
-      background: #1a1a1a;
-      border: 1px solid #2e2e2e;
-      border-radius: 8px;
-      color: #e0e0e0;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      color: var(--text);
       font-size: 13px;
       outline: none;
-      transition: border-color 0.15s;
+      transition: border-color 150ms, box-shadow 150ms;
     }
-    input:focus { border-color: #3a8cff; }
-    input::placeholder { color: #444; }
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-dim);
+    }
+    input::placeholder { color: var(--text-dim); }
     input[type="time"] { color-scheme: dark; cursor: pointer; }
 
-    /* 網域標籤清單 */
     .tag-list {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
       min-height: 28px;
       padding: 8px;
-      background: #1a1a1a;
-      border: 1px solid #2e2e2e;
-      border-radius: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 9px;
       margin-bottom: 6px;
     }
 
@@ -119,36 +136,35 @@
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      background: #252525;
-      border: 1px solid #333;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
       border-radius: 6px;
       padding: 3px 8px;
       font-size: 12px;
-      color: #ccc;
+      color: var(--text-muted);
     }
 
     .tag-del {
       background: none;
       border: none;
-      color: #555;
+      color: var(--text-dim);
       cursor: pointer;
       font-size: 14px;
       line-height: 1;
       padding: 0;
       width: auto;
       margin: 0;
-      transition: color 0.15s;
+      transition: color 150ms;
     }
-    .tag-del:hover { color: #e57373; }
+    .tag-del:hover { color: var(--danger); }
 
-    .tag-empty { font-size: 12px; color: #444; align-self: center; }
+    .tag-empty { font-size: 12px; color: var(--text-dim); align-self: center; }
 
-    /* 每日限時的行 */
     .limit-row {
       padding: 8px 10px;
-      background: #1a1a1a;
-      border: 1px solid #2e2e2e;
-      border-radius: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 9px;
       margin-bottom: 6px;
     }
 
@@ -162,7 +178,7 @@
     .limit-domain {
       font-size: 13px;
       font-weight: 600;
-      color: #e0e0e0;
+      color: var(--text);
     }
 
     .limit-row-bottom {
@@ -173,7 +189,7 @@
 
     .limit-row-bottom label {
       font-size: 11px;
-      color: #666;
+      color: var(--text-dim);
       text-transform: none;
       letter-spacing: 0;
       margin: 0;
@@ -182,18 +198,21 @@
     .limit-min {
       width: 64px;
       padding: 4px 8px;
-      background: #252525;
-      border: 1px solid #333;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
       border-radius: 6px;
-      color: #e0e0e0;
+      color: var(--text);
       font-size: 13px;
       text-align: center;
       outline: none;
+      transition: border-color 150ms, box-shadow 150ms;
+    }
+    .limit-min:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-dim);
     }
 
-    .limit-min:focus { border-color: #3a8cff; }
-
-    .limit-unit { font-size: 12px; color: #555; }
+    .limit-unit { font-size: 12px; color: var(--text-dim); }
 
     .limit-usage-info {
       display: flex;
@@ -201,13 +220,13 @@
       font-size: 11px;
       margin-bottom: 5px;
     }
-    .usage-used   { color: #666; }
-    .usage-remain { color: #3a8cff; }
-    .usage-exhausted { color: #e57373; }
+    .usage-used      { color: var(--text-dim); }
+    .usage-remain    { color: var(--accent); }
+    .usage-exhausted { color: var(--danger); }
 
     .usage-bar-bg {
       height: 3px;
-      background: #252525;
+      background: var(--surface-2);
       border-radius: 2px;
       margin-bottom: 8px;
       overflow: hidden;
@@ -220,116 +239,97 @@
 
     .btn-reset-usage {
       padding: 2px 8px;
-      background: #1a1a1a;
-      border: 1px solid #e57373;
+      background: var(--surface);
+      border: 1px solid var(--danger);
       border-radius: 6px;
-      color: #e57373;
+      color: var(--danger);
       font-size: 11px;
       cursor: pointer;
       width: auto;
       margin: 0;
-      transition: background 0.15s;
+      transition: background 150ms;
     }
-    .btn-reset-usage:hover { background: #2a1a1a; }
+    .btn-reset-usage:hover { background: rgba(229,115,115,0.1); }
 
-    /* 新增輸入列 */
     .add-row {
       display: flex;
       gap: 6px;
       align-items: center;
     }
-
     .add-row input { flex: 1; }
 
     .btn-add {
       padding: 7px 12px;
-      background: #1e1e1e;
-      border: 1px solid #333;
-      border-radius: 8px;
-      color: #3a8cff;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      color: var(--accent);
       font-size: 18px;
       line-height: 1;
       cursor: pointer;
       flex-shrink: 0;
       width: auto;
       margin: 0;
-      transition: background 0.15s;
+      transition: background 150ms, border-color 150ms;
     }
-    .btn-add:hover { background: #252525; }
+    .btn-add:hover { background: var(--surface-2); border-color: var(--accent); }
 
-    /* 儲存按鈕 */
     .btn-save {
       width: 100%;
       padding: 10px;
       margin-top: 20px;
-      background: #3a8cff;
+      background: linear-gradient(180deg, #4b95ff 0%, var(--accent) 100%);
       color: #fff;
-      border: none;
+      border: 1px solid var(--accent);
       border-radius: 10px;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
-      transition: background 0.15s;
+      transition: opacity 150ms;
+      box-shadow: 0 4px 14px rgba(58,140,255,0.3);
     }
-    .btn-save:hover { background: #2a7cef; }
+    .btn-save:hover { opacity: 0.88; }
+
+    .btn-report {
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      background: var(--surface);
+      color: var(--accent-soft);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color 150ms, background 150ms;
+    }
+    .btn-report:hover {
+      background: var(--surface-2);
+      border-color: var(--accent);
+    }
 
     .status {
       text-align: center;
       font-size: 12px;
       height: 18px;
       margin-top: 8px;
-      transition: color 0.2s;
+      transition: color 150ms;
     }
 
     .divider {
       height: 1px;
-      background: #1e1e1e;
+      background: var(--border-soft);
       margin-top: 20px;
     }
 
-    /* Ko-fi 贊助區塊 */
-    .kofi-wrap {
-      margin-top: 16px;
-      padding-top: 16px;
-      border-top: 1px solid #1e1e1e;
-      text-align: center;
-    }
-
-    .kofi-wrap p {
-      font-size: 11px;
-      color: #444;
-      margin-bottom: 8px;
-    }
-
-    .btn-kofi {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 7px 16px;
-      background: #1a1a1a;
-      border: 1px solid #2e2e2e;
-      border-radius: 20px;
-      color: #aaa;
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: border-color 0.15s, color 0.15s;
-      width: auto;
-      margin: 0;
-    }
-
-    .btn-kofi:hover {
-      border-color: #ff5e5b;
-      color: #ff5e5b;
-    }
-
-    .btn-kofi .kofi-icon { font-size: 14px; }
   </style>
 </head>
 <body>
 
   <div class="header">
-    <h3>Dopamine Detox</h3>
+    <h3>
+      <img src="../icons/taiwan-icon-wiki.svg" alt="" aria-hidden="true" style="height:14px;width:auto;vertical-align:middle;margin-right:6px;opacity:0.75;">Dopamine Detox
+    </h3>
     <div class="toggle-wrap">
       <span id="enabled-label">啟用中</span>
       <label class="toggle">
@@ -360,6 +360,19 @@
 
     <div class="divider"></div>
 
+    <div class="section">
+      <div class="section-title"></div>
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 5px 0;">
+        <span style="color: var(--text-muted);">專注瀏覽模式</span>
+        <label class="toggle">
+          <input type="checkbox" id="declutter-toggle">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
     <!-- 每日限時 -->
     <div class="section">
       <div class="section-title">每日限時</div>
@@ -369,7 +382,7 @@
         <input type="number" id="limit-min-input"    placeholder="分" min="1" style="flex:1">
         <button class="btn-add" id="limit-add" title="新增">＋</button>
       </div>
-      <div style="font-size:11px;color:#444;margin-top:5px">0 分鐘 = 不限制</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:5px">0 分鐘 = 不限制</div>
     </div>
 
     <div class="divider"></div>
@@ -387,33 +400,10 @@
         <button class="btn-add" id="cooldown-add" title="新增">＋</button>
       </div>
     </div>
-    
-    <!-- 介面去刺激化 -->
-    <div class="divider"></div>
-    <div class="section">
-      <div class="section-title">介面去刺激化</div>
-      <div class="field-label">全域過濾開關</div>
-      <div class="limit-row">
-        <div class="limit-row-top">
-          <span class="limit-domain">隱藏推薦影片、廣告與側邊欄</span>
-          <label class="toggle">
-            <input type="checkbox" id="declutter-toggle">
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-        <div style="font-size:11px;color:#666;margin-top:5px">自動過濾 YouTube 首頁、FB 贊助貼文與 IG 建議追蹤。</div>
-      </div>
-    </div>
 
     <button class="btn-save" id="save">儲存設定</button>
+    <button class="btn-report" id="open-report">查看數據報表</button>
     <div class="status" id="status"></div>
-
-    <div class="kofi-wrap">
-      <p>覺得這個插件有幫助嗎？</p>
-      <button class="btn-kofi" id="btn-kofi">
-        <span class="kofi-icon">☕</span> 請我喝杯咖啡
-      </button>
-    </div>
 
   </div>
 
